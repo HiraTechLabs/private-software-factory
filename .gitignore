@@ -3,3 +3,9 @@ __pycache__/
 *.py[cod]
 .env
 .pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+data/
