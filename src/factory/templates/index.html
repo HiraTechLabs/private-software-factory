@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Private Software Factory</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">F</div>
+      <div>
+        <strong>Factory</strong>
+        <span>Engineering Platform</span>
+      </div>
+    </div>
+
+    <div class="nav-label">WORKSPACE</div>
+    <a class="nav-item active" href="/">◫ &nbsp; Overview</a>
+    <a class="nav-item" href="#projects">▦ &nbsp; Projects</a>
+    <a class="nav-item" href="#create-project">＋ &nbsp; New project</a>
+
+    <div class="sidebar-bottom">
+      <span class="status-dot"></span>
+      Local instance
+      <span class="local-tag">LOCAL</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PRIVATE SOFTWARE FACTORY / WORKSPACE</div>
+        <h1>Engineering Overview</h1>
+        <p class="muted">One factory. Multiple products. Consistent engineering.</p>
+      </div>
+      <a class="primary-button" href="#create-project">＋ New project</a>
+    </header>
+
+    {% if request.query_params.get('error') == 'duplicate' %}
+      <div class="alert">A project with this ID already exists. Choose another name.</div>
+    {% elif request.query_params.get('error') == 'invalid_name' %}
+      <div class="alert">Enter a valid project name using letters or numbers.</div>
+    {% endif %}
+
+    <section class="stats">
+      <article class="stat-card">
+        <span class="stat-label">REGISTERED PROJECTS</span>
+        <strong>{{ projects | length }}</strong>
+        <span class="stat-foot">Managed by this factory</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">AI WORKFLOWS</span>
+        <strong>0</strong>
+        <span class="stat-foot">Not configured yet</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">PENDING REVIEWS</span>
+        <strong>0</strong>
+        <span class="stat-foot">Human approval remains required</span>
+      </article>
+    </section>
+
+    <section class="section" id="projects">
+      <div class="section-heading">
+        <div>
+          <h2>Projects</h2>
+          <p class="muted">Products registered in your engineering factory.</p>
+        </div>
+        <span class="count">{{ projects | length }} total</span>
+      </div>
+
+      {% if projects %}
+      <div class="project-grid">
+        {% for project in projects %}
+        <article class="project-card">
+          <div class="project-card-top">
+            <div class="project-icon">{{ project.name[:1] | upper }}</div>
+            <span class="status-pill">REGISTERED</span>
+          </div>
+          <h3>{{ project.name }}</h3>
+          <p class="project-description">
+            {{ project.description or "No description provided yet." }}
+          </p>
+          <div class="project-meta">
+            <span>STACK</span>
+            <strong>{{ project.stack or "Not configured" }}</strong>
+          </div>
+          <div class="project-meta">
+            <span>PRINCIPLES</span>
+            <strong>v{{ project.principles_version }}</strong>
+          </div>
+          <div class="project-footer">
+            <code>{{ project.id }}</code>
+            <span>Configuration created</span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">▦</div>
+        <h3>Your factory starts here</h3>
+        <p>No projects have been registered. Create your first project to establish its configuration.</p>
+        <a class="primary-button" href="#create-project">＋ Register first project</a>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="section create-section" id="create-project">
+      <div class="section-heading">
+        <div>
+          <h2>Register a project</h2>
+          <p class="muted">Create a project record and its initial factory configuration.</p>
+        </div>
+      </div>
+
+      <form action="/projects" method="post" class="project-form">
+        <label>
+          Project name <span>*</span>
+          <input name="name" placeholder="e.g. COS ERP" required maxlength="80">
+        </label>
+
+        <label>
+          Description
+          <textarea name="description" rows="3" maxlength="500"
+            placeholder="What does this product do?"></textarea>
+        </label>
+
+        <div class="form-row">
+          <label>
+            Git repository
+            <input name="repository" placeholder="e.g. https://github.com/org/repo">
+          </label>
+          <label>
+            Technology stack
+            <input name="stack" placeholder="e.g. Python, FastAPI, PostgreSQL">
+          </label>
+        </div>
+
+        <div class="form-note">
+          <strong>Default safety policy</strong>
+          <p>AI roles start disabled. Human approval is required for merging and production deployment.</p>
+        </div>
+
+        <div class="form-actions">
+          <button class="primary-button" type="submit">Create project</button>
+        </div>
+      </form>
+    </section>
+
+    <footer>Private Software Factory <span>•</span> Local MVP <span>•</span> No cloud resources required</footer>
+  </main>
+</body>
+</html>
