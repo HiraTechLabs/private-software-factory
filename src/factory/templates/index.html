@@ -1,3 +1,4 @@
+{% import "components/state_light.html" as c %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,120 +8,124 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <aside class="sidebar">
+  <aside class="rail">
     <div class="brand">
       <div class="brand-icon">F</div>
       <div>
         <strong>Factory</strong>
-        <span>Engineering Platform</span>
+        <span>Engineering platform</span>
       </div>
     </div>
 
-    <div class="nav-label">WORKSPACE</div>
-    <a class="nav-item active" href="/">◫ &nbsp; Overview</a>
-    <a class="nav-item" href="#projects">▦ &nbsp; Projects</a>
-    <a class="nav-item" href="#create-project">＋ &nbsp; New project</a>
+    <a class="nav-item active" href="/">Projects</a>
+    <a class="nav-item" href="/ui">UI catalog</a>
 
-    <div class="sidebar-bottom">
-      <span class="status-dot"></span>
-      Local instance
-      <span class="local-tag">LOCAL</span>
+    <div class="rail-bottom">
+      <span class="local-note">Local instance</span>
     </div>
   </aside>
 
   <main class="main">
-    <header class="topbar">
+    <header class="page-header">
       <div>
-        <div class="eyebrow">PRIVATE SOFTWARE FACTORY / WORKSPACE</div>
-        <h1>Engineering Overview</h1>
-        <p class="muted">One factory. Multiple products. Consistent engineering.</p>
+        <h1>Projects</h1>
+        <p class="muted">Products registered in your factory.</p>
       </div>
-      <a class="primary-button" href="#create-project">＋ New project</a>
+      <a class="button button--primary" href="#create-project">Create project</a>
     </header>
 
-    {% if request.query_params.get('error') == 'duplicate' %}
-      <div class="alert">A project with this ID already exists. Choose another name.</div>
-    {% elif request.query_params.get('error') == 'invalid_name' %}
-      <div class="alert">Enter a valid project name using letters or numbers.</div>
+    {% if error_message %}
+    <div class="alert" role="alert">{{ error_message }}</div>
     {% endif %}
 
-    <section class="stats">
-      <article class="stat-card">
-        <span class="stat-label">REGISTERED PROJECTS</span>
-        <strong>{{ projects | length }}</strong>
-        <span class="stat-foot">Managed by this factory</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">AI WORKFLOWS</span>
-        <strong>0</strong>
-        <span class="stat-foot">Not configured yet</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">PENDING REVIEWS</span>
-        <strong>0</strong>
-        <span class="stat-foot">Human approval remains required</span>
-      </article>
+    <section class="card stats">
+      <div class="stat">
+        <span class="stat-label">Registered projects</span>
+        <strong>{{ stats.registered }}</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Invalid configs</span>
+        <strong>{{ stats.invalid }}</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">AI roles enabled</span>
+        <strong>{{ stats.ai_roles_enabled }}</strong>
+      </div>
     </section>
 
-    <section class="section" id="projects">
+    <section id="projects">
       <div class="section-heading">
-        <div>
-          <h2>Projects</h2>
-          <p class="muted">Products registered in your engineering factory.</p>
-        </div>
-        <span class="count">{{ projects | length }} total</span>
+        <h2>Registered projects</h2>
+        <p class="muted">Every directory in the registry with a project.yaml.</p>
       </div>
 
-      {% if projects %}
-      <div class="project-grid">
-        {% for project in projects %}
-        <article class="project-card">
-          <div class="project-card-top">
-            <div class="project-icon">{{ project.name[:1] | upper }}</div>
-            <span class="status-pill">REGISTERED</span>
-          </div>
-          <h3>{{ project.name }}</h3>
-          <p class="project-description">
-            {{ project.description or "No description provided yet." }}
-          </p>
-          <div class="project-meta">
-            <span>STACK</span>
-            <strong>{{ project.stack or "Not configured" }}</strong>
-          </div>
-          <div class="project-meta">
-            <span>PRINCIPLES</span>
-            <strong>v{{ project.principles_version }}</strong>
-          </div>
-          <div class="project-footer">
-            <code>{{ project.id }}</code>
-            <span>Configuration created</span>
-          </div>
-        </article>
+      {% if records %}
+      <div class="cards">
+        {% for record in records %}
+          {% if record.manifest %}
+          <article class="card project-card">
+            <div class="project-card-head">
+              <h3>{{ record.manifest.name }}</h3>
+              {{ c.state_light(
+                ui_vocab.light_for_readiness("registered"),
+                ui_vocab.READINESS_LABELS["registered"],
+              ) }}
+            </div>
+            <p class="muted project-desc">
+              {{ record.manifest.description or "No description provided yet." }}
+            </p>
+            <dl class="project-meta">
+              <div><dt>Stack</dt><dd>{{ record.manifest.stack or "Not set" }}</dd></div>
+              <div><dt>Principles</dt><dd>{{ "v" + record.manifest.principles_version if record.manifest.principles_version else "Not set" }}</dd></div>
+              <div><dt>Repository</dt><dd>{{ record.manifest.repository or "Not set" }}</dd></div>
+            </dl>
+            <footer class="project-card-foot">
+              <code>{{ record.manifest.id }}</code>
+            </footer>
+          </article>
+          {% else %}
+          <article class="card error-card">
+            {{ c.state_light(
+              ui_vocab.light_for_readiness("invalid"),
+              ui_vocab.READINESS_LABELS["invalid"],
+            ) }}
+            <h3>{{ record.directory }}</h3>
+            <p class="muted">The configuration at
+              <code>data/projects/{{ record.directory }}/project.yaml</code>
+              is invalid, so the project is hidden from the registry.
+            </p>
+            <pre class="error-detail">{{ record.error }}</pre>
+          </article>
+          {% endif %}
         {% endfor %}
-      </div>
+        </div>
       {% else %}
-      <div class="empty-state">
-        <div class="empty-icon">▦</div>
-        <h3>Your factory starts here</h3>
-        <p>No projects have been registered. Create your first project to establish its configuration.</p>
-        <a class="primary-button" href="#create-project">＋ Register first project</a>
+      <div class="card empty-state">
+        <h3>Nothing is registered yet</h3>
+        <p>Create your first project to register its configuration.</p>
+        <a class="button button--primary" href="#create-project">Create project</a>
       </div>
       {% endif %}
     </section>
 
-    <section class="section create-section" id="create-project">
+    <section class="card create-section" id="create-project">
       <div class="section-heading">
-        <div>
-          <h2>Register a project</h2>
-          <p class="muted">Create a project record and its initial factory configuration.</p>
-        </div>
+        <h2>Create a project</h2>
+        <p class="muted">Registers a project directory and writes its project.yaml.</p>
       </div>
 
       <form action="/projects" method="post" class="project-form">
         <label>
-          Project name <span>*</span>
-          <input name="name" placeholder="e.g. COS ERP" required maxlength="80">
+          Project name
+          <input name="name" placeholder="e.g. Order system" required maxlength="80">
         </label>
+
+        <label>
+          Project ID (optional)
+          <input name="project_id" placeholder="auto-generated from the name if empty"
+            maxlength="80" aria-describedby="id-help">
+        </label>
+        <p class="field-help" id="id-help">Lowercase letters, numbers, and hyphens. Fill it in if the name is not English.</p>
 
         <label>
           Description
@@ -140,17 +145,17 @@
         </div>
 
         <div class="form-note">
-          <strong>Default safety policy</strong>
-          <p>AI roles start disabled. Human approval is required for merging and production deployment.</p>
+          <p>AI roles start disabled. Human approval is required for merging and for production
+            deployment.</p>
         </div>
 
         <div class="form-actions">
-          <button class="primary-button" type="submit">Create project</button>
+          <button class="button button--primary" type="submit">Create project</button>
         </div>
       </form>
     </section>
 
-    <footer>Private Software Factory <span>•</span> Local MVP <span>•</span> No cloud resources required</footer>
+    <footer class="page-footer">Private Software Factory — local MVP.</footer>
   </main>
 </body>
 </html>

@@ -5,7 +5,7 @@ Generated from `graph.yaml` by `scripts/graph_check.py`. Do not edit by hand; re
 ```mermaid
 graph LR
   web_app["web-app · service"]:::implemented
-  manifest["manifest · module"]:::planned
+  manifest["manifest · module"]:::implemented
   registry["registry · store"]:::implemented
   ui_system["ui-system · doc"]:::implemented
   decisions_log["decisions-log · doc"]:::implemented
@@ -19,7 +19,7 @@ graph LR
   classDef implemented stroke:#2E9E6B,stroke-width:2px;
   classDef planned stroke:#7B858E,stroke-dasharray:4 3;
 
-  web_app -->|depends_on|planned|| manifest
+  web_app -->|depends_on| manifest
   web_app -->|reads| registry
   web_app -->|writes| registry
   web_app -->|depends_on| ui_system

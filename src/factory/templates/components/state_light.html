@@ -1,0 +1,6 @@
+{% macro state_light(kind, label, status=None) -%}
+<span class="state-light state-light--{{ kind }}" {% if status %}data-status="{{ status }}"{% endif %}>
+  <span class="state-light__dot" aria-hidden="true"></span>
+  <span class="state-light__label">{{ label }}</span>
+</span>
+{%- endmacro %}

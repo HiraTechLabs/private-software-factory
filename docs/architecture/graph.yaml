@@ -12,7 +12,9 @@ nodes:
     kind: module
     name: Manifest model
     purpose: Pydantic v2 model for project.yaml and approval-policy validation.
-    status: planned
+    path: src/factory/manifest.py
+    owns: []
+    status: implemented
   - id: registry
     kind: store
     name: Project registry
@@ -80,7 +82,7 @@ edges:
     to: manifest
     kind: depends_on
     note: main.py loads and validates project.yaml through the manifest model.
-    status: planned
+    status: implemented
     decisions: ["0002", "0004"]
   - from: web-app
     to: registry
