@@ -197,13 +197,121 @@ def create_project(
     return RedirectResponse("/", status_code=303)
 
 
+def catalog_context() -> dict:
+    task_states = ui_vocab.task_state_list()
+    table_rows = []
+    for index, (state, label) in enumerate(task_states):
+        mode = ui_vocab.MODES[index % len(ui_vocab.MODES)]
+        light = ui_vocab.light_for_task_state(state)
+        table_rows.append(
+            [
+                label,
+                ui_vocab.LIGHT_KIND_LABELS[light] if light else "Not available yet",
+                ui_vocab.MODE_LABELS[mode],
+            ]
+        )
+    flow_steps: list[dict] = []
+    states_in_order = ui_vocab.TASK_STATES
+    step_state = {
+        "intake": "draft",
+        "plan": "planned",
+        "build": "implementing",
+        "checks": "checking",
+        "review": "in_review",
+        "merge": "merged",
+        "dev": "deployed_dev",
+        "prod": "awaiting_prod",
+    }
+    for step, state in step_state.items():
+        flow_steps.append(
+            {
+                "label": step,
+                "light": states_in_order[state],
+                "mode": "manual",
+            }
+        )
+    gate_samples = [
+        {
+            "state": "waiting",
+            "subject": "Change 001: add project search to the dashboard.",
+            "subject_meta": "Do not merge until the release engineer approves here.",
+            "verified": ["ruff check", "pytest", "graph_check"],
+            "reports": [
+                {
+                    "role": "review model",
+                    "text": "Diff matches the intake note.",
+                    "mode": "manual",
+                }
+            ],
+            "unverified": ["production release alone."],
+        },
+        {
+            "state": "approved",
+            "subject": "Change 002: bump pyyaml to the pinned version.",
+            "verified": ["ruff format --check"],
+            "reports": [],
+            "unverified": [],
+        },
+        {
+            "state": "rejected",
+            "subject": "Change 003: replace the LineRail with a new rail.",
+            "verified": [],
+            "reports": [
+                {
+                    "role": "review model",
+                    "text": "Diff renames a documented component.",
+                    "mode": "manual",
+                }
+            ],
+            "unverified": ["no intake note for a UI system change."],
+        },
+    ]
+    evidence_rows = [
+        {"kind": "spec", "label": "Intake note for the change", "href": "#"},
+        {"kind": "diff", "label": "What changed, line by line", "href": "#"},
+        {"kind": "checks", "label": "What the machines verified", "href": "#"},
+        {"kind": "review", "label": "What the review report says", "href": "#"},
+    ]
+    ref_chips = [
+        {"label": "rules:R1", "href": "#"},
+        {"label": "adr:0002", "href": "/#records"},
+        {"label": "node:checks", "href": "#"},
+    ]
+    filter_fields = [
+        {"name": "q", "label": "Search", "value": "", "placeholder": "text to find"},
+        {"name": "state", "label": "State", "value": "", "placeholder": "state name"},
+    ]
+    diff_rows = [
+        ("ctx", " def dashboard(request):"),
+        ("del", "-    projects = load_projects()"),
+        ("add", "+    records = load_projects()"),
+        ("ctx", "     stats = project_stats(records)"),
+    ]
+    log_lines = [
+        "checking records…",
+        "graph_check: ok",
+        "ui_lint: ok",
+        "pytest: 12 passed",
+    ]
+    return {
+        "ui_vocab": ui_vocab,
+        "flow_steps": flow_steps,
+        "gate_samples": gate_samples,
+        "evidence_rows": evidence_rows,
+        "ref_chips": ref_chips,
+        "table_rows": table_rows,
+        "filter_fields": filter_fields,
+        "diff_rows": diff_rows,
+        "log_lines": log_lines,
+    }
+
+
 @app.get("/ui", response_class=HTMLResponse)
 def ui_catalog(request: Request):
-    # Built in full in the UI system implementation commit.
     return templates.TemplateResponse(
         request=request,
         name="ui/catalog.html",
-        context={"mappings": {"readiness": ui_vocab.READINESS}},
+        context=catalog_context(),
     )
 
 

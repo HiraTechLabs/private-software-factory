@@ -1,10 +1,13 @@
 {% import "components/state_light.html" as c %}
+{% import "components/error_state.html" as err %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Private Software Factory</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/components.css">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -40,11 +43,11 @@
 
     <section class="card stats">
       <div class="stat">
-        <span class="stat-label">Registered projects</span>
+        <span class="stat-label">Projects registered</span>
         <strong>{{ stats.registered }}</strong>
       </div>
       <div class="stat">
-        <span class="stat-label">Invalid configs</span>
+        <span class="stat-label">Config errors</span>
         <strong>{{ stats.invalid }}</strong>
       </div>
       <div class="stat">
@@ -55,8 +58,8 @@
 
     <section id="projects">
       <div class="section-heading">
-        <h2>Registered projects</h2>
-        <p class="muted">Every directory in the registry with a project.yaml.</p>
+        <h2>Projects</h2>
+        <p class="muted">Every project directory in the registry.</p>
       </div>
 
       {% if records %}
@@ -84,18 +87,18 @@
             </footer>
           </article>
           {% else %}
-          <article class="card error-card">
+          <div class="error-card">
             {{ c.state_light(
               ui_vocab.light_for_readiness("invalid"),
               ui_vocab.READINESS_LABELS["invalid"],
             ) }}
-            <h3>{{ record.directory }}</h3>
-            <p class="muted">The configuration at
-              <code>data/projects/{{ record.directory }}/project.yaml</code>
-              is invalid, so the project is hidden from the registry.
-            </p>
-            <pre class="error-detail">{{ record.error }}</pre>
-          </article>
+            {{ err.error_state(
+              record.directory,
+              "The configuration is not readable or does not satisfy the manifest schema, so the project is hidden from the registry.",
+              path="data/projects/" + record.directory + "/project.yaml",
+              detail=record.error,
+            ) }}
+          </div>
           {% endif %}
         {% endfor %}
         </div>

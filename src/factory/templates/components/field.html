@@ -1,0 +1,9 @@
+{% macro field(name, label, value='', help_text='', error_text='', kind='text') -%}
+<div class="field" data-component="field">
+  <label class="field__label" for="field-{{ name }}">{{ label }}</label>
+  <input class="field__input" id="field-{{ name }}" name="{{ name }}" type="{{ kind }}"
+    value="{{ value or "" }}" aria-describedby="field-{{ name }}-help">
+  {% if help_text %}<p class="field__help" id="field-{{ name }}-help">{{ help_text }}</p>{% endif %}
+  {% if error_text %}<p class="field__error">{{ error_text }}</p>{% endif %}
+</div>
+{%- endmacro %}

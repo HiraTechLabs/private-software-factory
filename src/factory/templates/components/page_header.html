@@ -1,0 +1,12 @@
+{% macro page_header(title, description=None, action_href=None, action_label=None, data_page=None) -%}
+<header class="page-header" data-component="page-header" {% if data_page %}data-page="{{ data_page }}"{% endif %}>
+  <div>
+    <h1>{{ title }}</h1>
+    {% if description %}<p class="page-header__desc">{{ description }}</p>{% endif %}
+  </div>
+  {% if action_href and action_label %}
+    {% from "components/button.html" import button %}
+    {{ button(action_label, href=action_href) }}
+  {% endif %}
+</header>
+{%- endmacro %}

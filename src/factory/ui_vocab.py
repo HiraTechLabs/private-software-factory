@@ -9,6 +9,16 @@ from __future__ import annotations
 # Light kinds: what a StateLight shows.
 LIGHT_KINDS: tuple[str, ...] = ("idle", "run", "hold", "stop", "shadow", "done")
 
+# Display labels for the light kinds themselves.
+LIGHT_KIND_LABELS: dict[str, str] = {
+    "idle": "Idle",
+    "run": "Running",
+    "hold": "Waiting",
+    "stop": "Stopped",
+    "shadow": "Shadowed",
+    "done": "Done",
+}
+
 # Task states (closed enum) and the light kind each one shows.
 TASK_STATES: dict[str, str] = {
     "draft": "idle",

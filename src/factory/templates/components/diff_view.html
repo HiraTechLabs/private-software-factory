@@ -1,0 +1,10 @@
+{% macro diff_view(rows, file="diff.txt") -%}
+<figure class="diff-view" data-component="diff-view">
+  <figcaption class="diff-view__file"><code>{{ file }}</code></figcaption>
+  <pre class="diff-view__code"><code>
+    {%- for kind, text in rows -%}
+    <span class="diff-view__row diff-view__row--{{ kind }}" data-kind="{{ kind }}">{{ text }}</span>
+    {%- endfor -%}
+  </code></pre>
+</figure>
+{%- endmacro %}

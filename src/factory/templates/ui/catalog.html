@@ -4,17 +4,152 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>UI catalog — Private Software Factory</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/components.css">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="catalog-body">
-  <main class="main">
-    <header class="page-header">
-      <div>
-        <h1>UI catalog</h1>
-        <p class="muted">Placeholder until the UI system implementation lands.</p>
-      </div>
-      <a class="button button--primary" href="/">Projects</a>
-    </header>
-  </main>
+{% import "components/state_light.html" as state_light %}
+{% import "components/mode_tag.html" as mode_tag %}
+{% import "components/line_rail.html" as line_rail %}
+{% import "components/gate.html" as gate %}
+{% import "components/evidence_row.html" as evidence_row %}
+{% import "components/ref_chip.html" as ref_chip %}
+{% import "components/data_table.html" as data_table %}
+{% import "components/filter_bar.html" as filter_bar %}
+{% import "components/diff_view.html" as diff_view %}
+{% import "components/log_view.html" as log_view %}
+{% import "components/button.html" as button %}
+{% import "components/field.html" as field %}
+{% import "components/empty_state.html" as empty_state %}
+{% import "components/error_state.html" as error_state %}
+{% import "components/page_header.html" as page_header %}
+
+{{ page_header.page_header("UI catalog", "Every component in every state, light kind, and mode.",
+  action_href="/", action_label="Projects") }}
+
+<section class="catalog-section" id="catalog-state-light">
+  <h2>StateLight</h2>
+  <p class="muted">All light kinds:</p>
+  {% for kind in ui_vocab.LIGHT_KINDS %}
+  {{ state_light.state_light(kind, ui_vocab.LIGHT_KIND_LABELS[kind]) }}
+  {% endfor %}
+</section>
+
+<section class="catalog-section" id="catalog-mode-tag">
+  <h2>ModeTag</h2>
+  <p class="muted">All autonomy modes:</p>
+  {% for mode in ui_vocab.MODES %}
+  {{ mode_tag.mode_tag(mode, ui_vocab.MODE_LABELS[mode]) }}
+  {% endfor %}
+</section>
+
+<section class="catalog-section" id="catalog-line-rail">
+  <h2>LineRail</h2>
+  <p class="muted">The Factory flow with a light and a mode per step:</p>
+  {{ line_rail.line_rail(flow_steps) }}
+</section>
+
+<section class="catalog-section" id="catalog-gate">
+  <h2>Gate</h2>
+  <p class="muted">One per posture:</p>
+  <div class="cards gate-cards">
+    {% for section in gate_samples %}
+    {{ gate.gate(section) }}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="catalog-section" id="catalog-evidence-row">
+  <h2>EvidenceRow</h2>
+  <ul class="catalog-list">
+    {% for row in evidence_rows %}
+    {{ evidence_row.evidence_row(row.kind, row.label, row.href) }}
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="catalog-section" id="catalog-ref-chip">
+  <h2>RefChip</h2>
+  <p>
+    {% for chip in ref_chips %}
+    {{ ref_chip.ref_chip(chip.label, chip.href) }}
+    {% endfor %}
+  </p>
+</section>
+
+<section class="catalog-section" id="catalog-readiness">
+  <h2>Registry readiness</h2>
+  <p class="muted">The readiness states a project directory can show:</p>
+  {% for readiness in ui_vocab.READINESS %}
+  {{ state_light.state_light(
+    ui_vocab.READINESS[readiness],
+    ui_vocab.READINESS_LABELS[readiness],
+  ) }}
+  {% endfor %}
+</section>
+
+<section class="catalog-section" id="catalog-data-table">
+  <h2>DataTable</h2>
+  {{ data_table.data_table(["State", "Light", "Mode"], table_rows) }}
+</section>
+
+<section class="catalog-section" id="catalog-filter-bar">
+  <h2>FilterBar</h2>
+  {{ filter_bar.filter_bar(filter_fields) }}
+</section>
+
+<section class="catalog-section" id="catalog-diff-view">
+  <h2>DiffView</h2>
+  {{ diff_view.diff_view(diff_rows, file="src/factory/main.py") }}
+</section>
+
+<section class="catalog-section" id="catalog-log-view">
+  <h2>LogView</h2>
+  {{ log_view.log_view(log_lines) }}
+</section>
+
+<section class="catalog-section" id="catalog-button">
+  <h2>Button</h2>
+  <p>
+    {{ button.button("Create project", href="#") }}
+    {{ button.button("Reject change", href="#", variant="quiet") }}
+    {{ button.button("Approve change", type="button") }}
+  </p>
+</section>
+
+<section class="catalog-section" id="catalog-field">
+  <h2>Field</h2>
+  <div class="catalog-grid">
+    {{ field.field("project-name", "Project name", value="demo", help_text="Shown on the dashboard.") }}
+    {{ field.field("project-id", "Project ID",
+      error_text="Required: lowercase letters, numbers, hyphens.") }}
+  </div>
+</section>
+
+<section class="catalog-section" id="catalog-empty-state">
+  <h2>EmptyState</h2>
+  {{ empty_state.empty_state(
+    "Nothing registered yet",
+    "Create your first project to register its configuration.",
+    "/", "Create project",
+  ) }}
+</section>
+
+<section class="catalog-section" id="catalog-error-state">
+  <h2>ErrorState</h2>
+  {{ error_state.error_state(
+    "Configuration problem",
+    "The file could not be read or does not satisfy the manifest schema.",
+    path="data/projects/demo/project.yaml",
+    detail="1 validation error for Manifest",
+  ) }}
+</section>
+
+<section class="catalog-section" id="catalog-page-header">
+  <h2>PageHeader</h2>
+  {{ page_header.page_header("Title", "Short description for the operator.") }}
+</section>
+
 </body>
 </html>
