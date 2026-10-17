@@ -1,0 +1,162 @@
+schema_version: 1
+project: factory
+nodes:
+  - id: web-app
+    kind: service
+    name: Factory web app
+    purpose: Dashboard, project registration, UI catalog, health endpoint.
+    path: src/factory/main.py
+    owns: []
+    status: implemented
+  - id: manifest
+    kind: module
+    name: Manifest model
+    purpose: Pydantic v2 model for project.yaml and approval-policy validation.
+    status: planned
+  - id: registry
+    kind: store
+    name: Project registry
+    purpose: Registered projects as data/projects/<id>/project.yaml (git-ignored).
+    path: data/projects
+    owns: ["project registrations"]
+    status: implemented
+  - id: ui-system
+    kind: doc
+    name: UI system
+    purpose: Tokens, components, and state vocabulary backing all Factory pages.
+    path: design
+    owns: ["design tokens", "component catalog", "state vocabulary"]
+    status: implemented
+  - id: decisions-log
+    kind: doc
+    name: Decisions log
+    purpose: ADRs recording every decision and every exception to a rule.
+    path: docs/decisions
+    owns: []
+    status: implemented
+  - id: graph
+    kind: doc
+    name: Architecture graph
+    purpose: Node and edge map of the Factory, checked and rendered from graph.yaml.
+    path: docs/architecture
+    owns: []
+    status: implemented
+  - id: checks
+    kind: service
+    name: Checks
+    purpose: Local scripts enforcing records, imports, and the UI system.
+    path: scripts
+    owns: []
+    status: implemented
+  - id: ci
+    kind: service
+    name: CI
+    purpose: Runs lint, format, tests, record checks on every push and PR.
+    path: .github/workflows/ci.yml
+    owns: []
+    status: implemented
+  - id: orchestrator
+    kind: service
+    name: Orchestrator
+    purpose: Runs the one fixed flow for every change (planned).
+    status: planned
+  - id: model-gateway
+    kind: external
+    name: Model gateway
+    purpose: Three AI roles (planning, execution, review) behind one gateway (planned).
+    status: planned
+  - id: shared-principles
+    kind: doc
+    name: Shared principles
+    purpose: Security, clean code, and design-pattern principles shared by projects (planned).
+    status: planned
+  - id: git-server
+    kind: external
+    name: Git server
+    purpose: Hosting for project repositories and protected branches (planned).
+    status: planned
+edges:
+  - from: web-app
+    to: manifest
+    kind: depends_on
+    note: main.py loads and validates project.yaml through the manifest model.
+    status: planned
+    decisions: ["0002", "0004"]
+  - from: web-app
+    to: registry
+    kind: reads
+    note: Dashboard lists projects from data/projects.
+    status: implemented
+    decisions: ["0004"]
+  - from: web-app
+    to: registry
+    kind: writes
+    note: Registration creates the directory and writes project.yaml atomically.
+    status: implemented
+    decisions: ["0004"]
+  - from: web-app
+    to: ui-system
+    kind: depends_on
+    note: All pages use tokens, components, and ui_vocab vocabulary only.
+    status: implemented
+    decisions: ["0005"]
+  - from: checks
+    to: graph
+    kind: enforces
+    note: graph_check.py validates graph.yaml and ADR references.
+    status: implemented
+    decisions: ["0008"]
+  - from: checks
+    to: ui-system
+    kind: enforces
+    note: ui_lint.py, build_tokens.py, and UI tests enforce the UI system.
+    status: implemented
+    decisions: ["0005"]
+  - from: checks
+    to: decisions-log
+    kind: enforces
+    note: ADR ids referenced by the graph or by waivers must exist and be accepted.
+    status: implemented
+    decisions: ["0008"]
+  - from: ci
+    to: checks
+    kind: calls
+    note: CI workflow runs every check in a fresh environment.
+    status: implemented
+    decisions: ["0003"]
+  - from: orchestrator
+    to: manifest
+    kind: reads
+    note: Flow configuration comes from the manifest.
+    status: planned
+    decisions: ["0002"]
+  - from: orchestrator
+    to: shared-principles
+    kind: reads
+    note: Shared principles apply to every step of the flow.
+    status: planned
+    decisions: []
+  - from: orchestrator
+    to: decisions-log
+    kind: reads
+    note: Steps consult decisions before deviating from defaults.
+    status: planned
+    decisions: ["0008"]
+  - from: orchestrator
+    to: graph
+    kind: reads
+    note: Steps respect the declared component boundaries.
+    status: planned
+    decisions: []
+  - from: orchestrator
+    to: model-gateway
+    kind: calls
+    note: planning, execution, and review roles come through the gateway.
+    status: planned
+    decisions: []
+  - from: orchestrator
+    to: git-server
+    kind: calls
+    note: Branches, commits, and pull requests happen on the git server.
+    status: planned
+    decisions: []
