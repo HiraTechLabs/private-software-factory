@@ -141,7 +141,7 @@ def derive_import_edges(
         rel = module_file.relative_to(ROOT / SRC_PACKAGE)
         package = ".".join(rel.with_suffix("").parts)
         rel_root = str(module_file.relative_to(ROOT)).replace("\\", "/")
-        modules[f"{SRC_PACKAGE}.{package}"] = rel_root
+        modules[package] = rel_root
 
     import_edges: set[tuple[str, str]] = set()
     for package, rel_path in sorted(modules.items()):
@@ -155,10 +155,10 @@ def derive_import_edges(
             elif isinstance(stmt, ast.ImportFrom) and stmt.module and stmt.level == 0:
                 imported = [stmt.module]
             for name in imported:
-                if not name.startswith(f"{SRC_PACKAGE}."):
+                if name not in modules or name == package:
                     continue
-                target = modules.get(name)
-                if target is None or target == rel_path:
+                target = modules[name]
+                if target == rel_path:
                     continue
                 target_node = nodes_by_path.get(target)
                 if target_node is None:
