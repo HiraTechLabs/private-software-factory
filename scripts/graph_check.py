@@ -76,7 +76,9 @@ def check_nodes(nodes: list[dict], report: Report) -> dict[str, dict]:
     for node in nodes:
         node_id = node.get("id")
         if not isinstance(node_id, str) or not ID_PATTERN.match(node_id):
-            report.fail(f"node id {node_id!r} must be lowercase letters, digits, hyphens")
+            report.fail(
+                f"node id {node_id!r} must be lowercase letters, digits, hyphens"
+            )
             continue
         if node_id in seen:
             report.fail(f"duplicate node id {node_id!r}")
@@ -86,7 +88,9 @@ def check_nodes(nodes: list[dict], report: Report) -> dict[str, dict]:
             report.fail(f"node {node_id}: kind must be one of {sorted(NODE_KINDS)}")
         status = node.get("status")
         if status not in NODE_STATUSES:
-            report.fail(f"node {node_id}: status must be one of {sorted(NODE_STATUSES)}")
+            report.fail(
+                f"node {node_id}: status must be one of {sorted(NODE_STATUSES)}"
+            )
         path = node.get("path")
         if status == "implemented":
             if not isinstance(path, str) or not path:
@@ -119,11 +123,14 @@ def module_paths(nodes: list[dict]) -> dict[str, str]:
     return {
         node["path"]: node["id"]
         for node in nodes
-        if node.get("status") == "implemented" and str(node.get("path", "")).endswith(".py")
+        if node.get("status") == "implemented"
+        and str(node.get("path", "")).endswith(".py")
     }
 
 
-def derive_import_edges(report: Report, nodes_by_path: dict[str, str]) -> set[tuple[str, str]]:
+def derive_import_edges(
+    report: Report, nodes_by_path: dict[str, str]
+) -> set[tuple[str, str]]:
     """Return (from_node, to_node) pairs backed by a real `import factory.*`."""
     modules: dict[str, str] = {}
     src = ROOT / SRC_PACKAGE
@@ -138,7 +145,9 @@ def derive_import_edges(report: Report, nodes_by_path: dict[str, str]) -> set[tu
 
     import_edges: set[tuple[str, str]] = set()
     for package, rel_path in sorted(modules.items()):
-        tree = ast.parse((ROOT / rel_path).read_text(encoding="utf-8"), filename=rel_path)
+        tree = ast.parse(
+            (ROOT / rel_path).read_text(encoding="utf-8"), filename=rel_path
+        )
         for stmt in ast.walk(tree):
             imported: list[str] = []
             if isinstance(stmt, ast.Import):
@@ -185,7 +194,8 @@ def derive_import_edges(report: Report, nodes_by_path: dict[str, str]) -> set[tu
         }
         if not pairs_backed:
             report.warn(
-                f"declared depends_on edge {from_node} -> {to_node} has no matching import"
+                "declared depends_on edge "
+                f"{from_node} -> {to_node} has no matching import"
             )
     return import_edges
 
@@ -231,14 +241,18 @@ def check_decisions(node_ids: set[str], report: Report) -> None:
             continue
         adr_id = str(front.get("id", ""))
         if adr_id != match.group(1):
-            report.fail(f"{path.name}: frontmatter id {adr_id!r} does not match the file name")
+            report.fail(
+                f"{path.name}: frontmatter id {adr_id!r} does not match the file name"
+            )
         if adr_id in seen_ids:
             report.fail(f"{path.name}: duplicate ADR id {adr_id}")
         seen_ids[adr_id] = path.name
         if not str(front.get("title", "")).strip():
             report.fail(f"{path.name}: title is empty")
         if front.get("status") not in {"proposed", "accepted", "superseded"}:
-            report.fail(f"{path.name}: status must be proposed, accepted, or superseded")
+            report.fail(
+                f"{path.name}: status must be proposed, accepted, or superseded"
+            )
         if str(front.get("date", "")) == "YYYY-MM-DD":
             report.fail(f"{path.name}: date placeholder must be replaced")
         for old_id in front.get("supersedes") or []:
@@ -315,7 +329,9 @@ def main() -> int:
                 "python scripts/graph_check.py --write and commit the result"
             )
     else:
-        report.fail("docs/architecture/graph.md is missing; run scripts/graph_check.py --write")
+        report.fail(
+            "docs/architecture/graph.md is missing; run scripts/graph_check.py --write"
+        )
 
     for warning in report.warnings:
         print(f"warning: {warning}")

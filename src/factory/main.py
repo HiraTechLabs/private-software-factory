@@ -1,7 +1,7 @@
-from pathlib import Path
 import re
-import yaml
+from pathlib import Path
 
+import yaml
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
