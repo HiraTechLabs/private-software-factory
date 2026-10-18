@@ -10,10 +10,11 @@ dependencies = [
     "uvicorn",
     "python-multipart",
     "pydantic>=2",
+    "httpx",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx", "ruff"]
+dev = ["pytest", "ruff"]
 
 [build-system]
 requires = ["setuptools>=68"]
