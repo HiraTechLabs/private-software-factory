@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory UI mockup (reference, sample data)</title>
+<style>
+  :root {
+    --ink: #14211F;        /* text, sidebar */
+    --ink-soft: #4A5B58;
+    --paper: #F7F8F6;      /* page */
+    --card: #FFFFFF;
+    --line: #DCE3E0;
+    --accent: #0F6B5F;     /* buttons, links: deep teal */
+    --accent-ink: #FFFFFF;
+    --need: #B26A00;       /* needs you */
+    --need-bg: #FFF3DC;
+    --work: #1F6FB2;       /* machine or model working */
+    --done: #2E7D4F;
+    --fail: #B3382F;
+    --fail-bg: #FCE9E7;
+    --rail: 232px;
+    --r-control: 8px;
+    --r-panel: 12px;
+    font-size: 17px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font-family: "Segoe UI", system-ui, -apple-system, "Noto Sans Arabic", sans-serif; line-height: 1.5; }
+  code, .mono { font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: .88em; }
+  a { color: var(--accent); }
+  .shell { display: grid; grid-template-columns: var(--rail) 1fr; min-height: 100vh; }
+  .rail { background: var(--ink); color: #E7EFEC; padding: 24px 16px; }
+  .rail h1 { font-size: 1.15rem; margin: 0 8px 28px; font-weight: 650; }
+  .rail a { display: block; color: #C9D8D4; text-decoration: none; padding: 10px 12px; border-radius: var(--r-control); margin-bottom: 4px; }
+  .rail a[aria-current="page"] { background: #23423E; color: #fff; font-weight: 600; }
+  .rail .badge { float: inline-end; background: var(--need); color: #fff; border-radius: 99px; padding: 0 9px; font-size: .8rem; }
+  main { padding: 36px clamp(20px, 5vw, 56px) 80px; max-width: 1100px; }
+  .sub { color: var(--ink-soft); margin: 4px 0 28px; max-width: 62ch; }
+  h2 { font-size: 1.05rem; margin: 36px 0 12px; }
+  .hero { font-size: 2.1rem; font-weight: 650; line-height: 1.2; margin: 0; }
+
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;
+         background: var(--card); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 16px 20px; margin-bottom: 10px; }
+  .row.need { border-color: #E6C486; background: var(--need-bg); }
+  .row b { font-weight: 600; }
+  .muted { color: var(--ink-soft); font-size: .92rem; }
+  .btn { display: inline-block; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: var(--r-control);
+         padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn.quiet { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  .btn.danger { background: transparent; color: var(--fail); border: 1px solid var(--line); }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92rem; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+  .s-need { color: var(--need); } .s-work { color: var(--work); } .s-done { color: var(--done); } .s-fail { color: var(--fail); } .s-idle { color: #7C8A87; }
+
+  /* Pipeline: the one bold element on the Request page */
+  .pipe { display: grid; grid-template-columns: repeat(9, 1fr); margin: 8px 0 8px; }
+  .step { position: relative; text-align: center; font-size: .82rem; padding-top: 30px; color: var(--ink-soft); }
+  .step::before { content: ""; position: absolute; top: 8px; inset-inline: 0; height: 3px; background: var(--line); }
+  .step::after { content: ""; position: absolute; top: 2px; inset-inline-start: calc(50% - 8px); width: 16px; height: 16px; border-radius: 50%;
+                 background: var(--paper); border: 3px solid var(--line); }
+  .step.done { color: var(--ink); } .step.done::before { background: var(--done); } .step.done::after { background: var(--done); border-color: var(--done); }
+  .step.now { color: var(--need); font-weight: 700; } .step.now::after { border-color: var(--need); background: var(--need-bg); box-shadow: 0 0 0 4px var(--need-bg); }
+  .step small { display: block; font-weight: 400; color: var(--ink-soft); }
+  .next { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 14px 20px; margin: 18px 0 24px; }
+
+  .cols { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-panel); }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding: 0 12px; }
+  .tabs button { background: none; border: 0; font: inherit; padding: 14px 14px; cursor: pointer; color: var(--ink-soft); border-bottom: 3px solid transparent; }
+  .tabs button[aria-selected="true"] { color: var(--ink); font-weight: 650; border-bottom-color: var(--accent); }
+  .diff { margin: 0; padding: 16px 20px; overflow-x: auto; font-size: .86rem; line-height: 1.6; }
+  .diff .add { background: #E4F4EA; display: block; } .diff .ctx { color: var(--ink-soft); display: block; }
+  .decide { position: sticky; top: 20px; padding: 20px; }
+  .decide h3 { margin: 0 0 12px; font-size: 1.05rem; }
+  .facts { list-style: none; margin: 0 0 16px; padding: 0; }
+  .facts li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; }
+  .decide .btn { width: 100%; margin-bottom: 8px; text-align: center; }
+  textarea { width: 100%; font: inherit; border: 1px solid var(--line); border-radius: var(--r-control); padding: 10px; min-height: 64px; }
+  .activity { list-style: none; padding: 0; margin: 0; }
+  .activity li { padding: 8px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 110px 1fr; gap: 12px; }
+  .note { background: #EAF2FB; border: 1px solid #C5D9EE; border-radius: var(--r-control); padding: 8px 14px; font-size: .88rem; margin-bottom: 24px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 860px) { .shell { grid-template-columns: 1fr; } .rail { display: none; } .cols { grid-template-columns: 1fr; } .pipe { grid-template-columns: repeat(3, 1fr); row-gap: 12px; } }
+  :focus-visible { outline: 3px solid #7FB8AE; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="rail" aria-label="Main">
+    <h1>Software Factory</h1>
+    <a href="#today" data-go="today" aria-current="page">Today <span class="badge">2</span></a>
+    <a href="#projects" data-go="projects">Projects</a>
+    <a href="#models" data-go="models">Models</a>
+    <a href="#guide" data-go="guide">Guide</a>
+  </nav>
+
+  <main>
+    <p class="note">Mockup for layout and feel. Sample data. Pages marked below as not drawn exist in the real app; the point here is how the two key pages look and read.</p>
+
+    <!-- TODAY -->
+    <section id="view-today">
+      <p class="hero">2 things need you</p>
+      <p class="sub">Requests that are waiting for your decision come first. Everything else is moving on its own.</p>
+
+      <h2>Needs your approval</h2>
+      <div class="row need">
+        <div><b>Add a greeting function</b> <span class="muted">in hello-factory</span><br>
+          <span class="status s-need"><span class="dot"></span>Needs your approval to merge</span>
+          <span class="muted"> &nbsp;Checks passed. Review model sees no problems.</span></div>
+        <a class="btn" href="#request" data-go="request">Review</a>
+      </div>
+      <div class="row need">
+        <div><b>Fix date format in invoices</b> <span class="muted">in billing-tool</span><br>
+          <span class="status s-need"><span class="dot"></span>Needs your approval for production</span>
+          <span class="muted"> &nbsp;Merged and running on dev.</span></div>
+        <a class="btn" href="#request" data-go="request">Review</a>
+      </div>
+
+      <h2>Waiting for you</h2>
+      <div class="row">
+        <div><b>Add search to the dashboard</b> <span class="muted">in hello-factory</span><br>
+          <span class="status s-need"><span class="dot"></span>Waiting for your pasted answer</span>
+          <span class="muted"> &nbsp;The planning step needs a reply.</span></div>
+        <a class="btn quiet" href="#request" data-go="request">Open</a>
+      </div>
+
+      <h2>Working now</h2>
+      <div class="row">
+        <div><b>Rename export button</b> <span class="muted">in billing-tool</span><br>
+          <span class="status s-work"><span class="dot"></span>Building</span>
+          <span class="muted"> &nbsp;Running for 3 min. The local model is slow, this is normal.</span></div>
+        <a class="btn quiet" href="#request" data-go="request">Open</a>
+      </div>
+
+      <h2>Failed</h2>
+      <div class="row" style="background:var(--fail-bg);border-color:#EBC3BF">
+        <div><b>Update tax rates</b> <span class="muted">in billing-tool</span><br>
+          <span class="status s-fail"><span class="dot"></span>Failed at Checks</span>
+          <span class="muted"> &nbsp;2 of 14 tests failed twice.</span></div>
+        <a class="btn quiet" href="#request" data-go="request">See why</a>
+      </div>
+    </section>
+
+    <!-- REQUEST -->
+    <section id="view-request" hidden>
+      <p class="muted"><a href="#today" data-go="today">Today</a> / hello-factory / <span class="mono">c-0003</span></p>
+      <p class="hero">Add a greeting function</p>
+      <p class="sub">Feature request. Created today by you.</p>
+
+      <div class="pipe" aria-label="Pipeline">
+        <div class="step done">Request<small>You</small></div>
+        <div class="step done">Plan<small>Model</small></div>
+        <div class="step done">Build<small>Model</small></div>
+        <div class="step done">Checks<small>Machine</small></div>
+        <div class="step done">Review<small>Model</small></div>
+        <div class="step now">Merge<small>Needs you</small></div>
+        <div class="step">Dev<small>Machine</small></div>
+        <div class="step">Production<small>Needs you</small></div>
+        <div class="step">Live<small>Machine</small></div>
+      </div>
+      <div class="next"><b>What happens next:</b> when you approve, the change is merged into <span class="mono">main</span> and sent to dev. Nothing reaches production without a second approval from you.</div>
+
+      <div class="cols">
+        <div class="panel">
+          <div class="tabs" role="tablist">
+            <button role="tab" aria-selected="false">Plan</button>
+            <button role="tab" aria-selected="true">Changes</button>
+            <button role="tab" aria-selected="false">Checks</button>
+            <button role="tab" aria-selected="false">Review</button>
+          </div>
+          <pre class="diff"><span class="mono ctx">notes/c-0003.md (new file)</span><span class="add mono">+ # Add a greeting function</span><span class="add mono">+ Return a friendly greeting for a given name.</span><span class="add mono">+ greet("Mona") returns "Hello, Mona!"</span></pre>
+        </div>
+
+        <aside class="panel decide" aria-label="Your decision">
+          <h3>Your decision</h3>
+          <ul class="facts">
+            <li><span>Checks</span><span class="status s-done"><span class="dot"></span>2 of 2 passed</span></li>
+            <li><span>Review model</span><span class="status s-done"><span class="dot"></span>No problems</span></li>
+            <li><span>Changes</span><span>1 file added</span></li>
+          </ul>
+          <button class="btn">Approve merge</button>
+          <label class="muted" for="note">Or send it back with a note</label>
+          <textarea id="note" placeholder="What should change?"></textarea>
+          <button class="btn quiet" style="margin-top:8px">Send back</button>
+          <button class="btn danger">Cancel request</button>
+        </aside>
+      </div>
+
+      <h2>Activity</h2>
+      <ul class="activity panel" style="padding:4px 20px">
+        <li><span class="muted">10:42</span><span>Review model finished: no problems.</span></li>
+        <li><span class="muted">10:41</span><span>Checks passed (2 of 2).</span></li>
+        <li><span class="muted">10:39</span><span>Build finished: 1 file added on branch <span class="mono">change/c-0003</span>.</span></li>
+        <li><span class="muted">10:37</span><span>Plan finished by Demo model (scripted).</span></li>
+      </ul>
+    </section>
+
+    <section id="view-other" hidden>
+      <p class="hero">Not drawn in this mockup</p>
+      <p class="sub">Projects, Models, and Guide use the same page header, rows, and buttons as Today.</p>
+    </section>
+  </main>
+</div>
+<script>
+  // Mockup navigation only.
+  var views = { today: "view-today", request: "view-request", projects: "view-other", models: "view-other", guide: "view-other" };
+  document.querySelectorAll("[data-go]").forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      var key = a.getAttribute("data-go");
+      Object.keys(views).forEach(function (k) { document.getElementById(views[k]).hidden = true; });
+      document.getElementById(views[key]).hidden = false;
+      document.querySelectorAll(".rail a").forEach(function (r) { r.removeAttribute("aria-current"); });
+      var rail = document.querySelector('.rail a[data-go="' + (key === "request" ? "today" : key) + '"]');
+      if (rail) rail.setAttribute("aria-current", "page");
+      window.scrollTo(0, 0);
+    });
+  });
+</script>
+</body>
+</html>

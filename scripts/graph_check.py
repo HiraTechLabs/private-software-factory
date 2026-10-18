@@ -92,6 +92,7 @@ def check_nodes(nodes: list[dict], report: Report) -> dict[str, dict]:
                 f"node {node_id}: status must be one of {sorted(NODE_STATUSES)}"
             )
         path = node.get("path")
+        target_path = node.get("target_path")
         if status == "implemented":
             if not isinstance(path, str) or not path:
                 report.fail(f"node {node_id}: implemented nodes need a path")
@@ -100,9 +101,63 @@ def check_nodes(nodes: list[dict], report: Report) -> dict[str, dict]:
                 store_dir.mkdir(parents=True, exist_ok=True)
             elif not (ROOT / path).exists():
                 report.fail(f"node {node_id}: path {path!r} does not exist")
-        elif path:
-            report.fail(f"node {node_id}: planned nodes must not carry a path")
+            if target_path:
+                report.fail(
+                    f"node {node_id}: target_path is only allowed on planned nodes"
+                )
+        else:  # planned
+            if path:
+                report.fail(f"node {node_id}: planned nodes must not carry a path")
+            if not target_path and node.get("kind") != "external":
+                report.fail(
+                    f"node {node_id}: planned nodes need a target_path "
+                    "(external tools live outside the repository)"
+                )
+        if node.get("group") is not None and (
+            not isinstance(node.get("group"), str) or not node["group"]
+        ):
+            report.fail(f"node {node_id}: group must be a non-empty string")
+        evidence = node.get("evidence")
+        if evidence is not None and not isinstance(evidence, list):
+            report.fail(f"node {node_id}: evidence must be a list of test ids")
+            evidence = None
+        if (
+            status == "implemented"
+            and node.get("kind") in {"service", "module", "store"}
+            and isinstance(path, str)
+            and (path.startswith("src/") or path.startswith("data/"))
+        ):
+            if not evidence:
+                report.fail(
+                    f"node {node_id}: implemented {node.get('kind')} under src/ or "
+                    "data/ needs evidence (test ids from tests/)"
+                )
+        if evidence:
+            for test_id in evidence:
+                check_evidence_id(node_id, test_id, report)
     return seen
+
+
+def check_evidence_id(node_id: str, test_id: str, report: Report) -> None:
+    """Evidence ids look like tests/test_x.py or tests/test_x.py::test_func."""
+    match = re.match(r"^(tests/[\w./-]+\.py)(?:::(\w+))?$", str(test_id))
+    if not match:
+        report.fail(
+            f"node {node_id}: evidence id {test_id!r} must be tests/<file>.py[::func]"
+        )
+        return
+    test_file = ROOT / match.group(1)
+    if not test_file.exists():
+        report.fail(f"node {node_id}: evidence file {match.group(1)!r} does not exist")
+        return
+    function = match.group(2)
+    if function and not re.search(
+        rf"^def {function}\b", test_file.read_text(encoding="utf-8"), re.MULTILINE
+    ):
+        report.fail(
+            f"node {node_id}: evidence {test_id!r} names no function {function!r} "
+            f"in {match.group(1)}"
+        )
 
 
 def check_edges(edges: list[dict], node_ids: set[str], report: Report) -> None:
@@ -273,28 +328,50 @@ def check_decisions(node_ids: set[str], report: Report) -> None:
 
 
 def mermaid(data: dict) -> str:
+    """Render graph.yaml as valid Mermaid: groups as subgraphs, planned items dashed."""
+    group_titles = {
+        "interface": "Interface (what the owner sees)",
+        "engine": "Engine (runs the one fixed flow)",
+        "state": "State and records (files, not a database)",
+        "projects": "Projects and external tools",
+        "quality": "Quality (how we know it works)",
+    }
+
+    def ident(value: str) -> str:
+        # Prefix avoids Mermaid reserved words (a node called "graph" or "end").
+        return "n_" + value.replace("-", "_")
+
     lines = [
         "# Architecture graph",
         "",
         "Generated from `graph.yaml` by `scripts/graph_check.py`. Do not edit by hand;"
         " regenerate with `python scripts/graph_check.py --write`.",
         "",
+        "Solid outline and solid arrow: exists today. Dashed: planned.",
+        "",
         "```mermaid",
         "graph LR",
     ]
-    for node in data.get("nodes") or []:
-        node_id = node["id"].replace("-", "_")
-        label = f"{node['id']} · {node.get('kind', 'service')}"
-        css = "planned" if node.get("status") == "planned" else "implemented"
-        lines.append(f'  {node_id}["{label}"]:::{css}')
+    nodes = data.get("nodes") or []
+    grouped: dict[str, list[dict]] = {}
+    for node in nodes:
+        grouped.setdefault(node.get("group") or "other", []).append(node)
+    for group, members in grouped.items():
+        title = group_titles.get(group, group)
+        lines.append(f'  subgraph g_{group.replace("-", "_")}["{title}"]')
+        for node in members:
+            css = "planned" if node.get("status") == "planned" else "implemented"
+            name = node.get("name") or node["id"]
+            lines.append(f'    {ident(node["id"])}["{name}"]:::{css}')
+        lines.append("  end")
     lines.append("  classDef implemented stroke:#2E9E6B,stroke-width:2px;")
     lines.append("  classDef planned stroke:#7B858E,stroke-dasharray:4 3;")
     lines.append("")
     for edge in data.get("edges") or []:
-        from_id = edge["from"].replace("-", "_")
-        to_id = edge["to"].replace("-", "_")
-        status = "|planned|" if edge.get("status") == "planned" else ""
-        lines.append(f"  {from_id} -->|{edge['kind']}{status}| {to_id}")
+        arrow = "-.->" if edge.get("status") == "planned" else "-->"
+        lines.append(
+            f"  {ident(edge['from'])} {arrow}|{edge['kind']}| {ident(edge['to'])}"
+        )
     lines.append("```")
     lines.append("")
     return "\n".join(lines)
