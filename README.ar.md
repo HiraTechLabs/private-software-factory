@@ -1,7 +1,13 @@
 # مصنع البرمجيات الخاص
 
-مسار واحد ثابت لكل تغيير، على مجموعة أدوات معلنة ومثبّتة، مع اعتماد بشرٍ لكل عملية
-دمج أو إطلاق إلى الإنتاج. هذا المستودع هو «المشروع صفر»: يلتزم بقواعده بنفسه (انظر AGENTS.md).
+**ما هذا؟** المصنع تطبيق يأخذ كل تغيير على منتج برمجي — ميزة أو إصلاح خطأ — عبر مسار واحد ثابت:
+الطلب، الخطة، البناء، الفحوص، المراجعة، ثم ضغطتان منك (الموافقة على الدمج، والموافقة على
+الإنتاج). تفتحه في المتصفح، وتنشئ مشروعاً، وترسل طلباً، وتشاهده يسير حتى «Live». ولا شيء يصل
+إلى فرع `main` أو إلى الإنتاج دون ضغطة بشرية. هذا المستودع هو «المشروع صفر»: يلتزم بقواعده
+بنفسه (انظر AGENTS.md).
+
+يشغّل CI الفحوص نفسها على GitHub بعد كل رفع، فيظهر أي رفع مكسور. وهو يفحص كود المصنع نفسه؛
+وليس هو نفسه خطوة «الفحوص» التي تعمل على طلبات كل مشروع.
 
 ## التثبيت
 
@@ -19,32 +25,26 @@ pip install -e ".[dev]"
 uvicorn factory.main:app --host 127.0.0.1
 ```
 
-ثم افتح لوحة التحكم على `http://127.0.0.1:8000/` وكتالوج الواجهة على `/ui`.
+ثم افتح `http://127.0.0.1:8000/`. في صفحة **اليوم (Today)**، اضغط **إنشاء مشروع تجريبي**، ثم
+أرسل طلباً وتابعه حتى Live. راجع `docs/GUIDE.ar.md` للشرح الكامل بكلمات بسيطة.
 
 ## الفحوص
 
-يجب أن تنجح كلها محلياً وفي CI:
+أمر واحد يشغّل كل شيء (تنسيق، صياغة، اختبارات، الرسم، الواجهة، الرموز، الميزات، الدخان):
 
 ```sh
-ruff check .
-ruff format --check .
-pytest
-python scripts/graph_check.py --check
-python scripts/ui_lint.py
-python scripts/build_tokens.py --check
+python scripts/check_all.py
 ```
 
 ## بنية المستودع
 
 ```text
 AGENTS.md            قواعد هذا المستودع الملزمة (اقرأه أولاً)
-docs/decisions/      سجل القرارات (ADRs)
-docs/architecture/   graph.yaml + الرسم المولد graph.md
-docs/ui/             نظام الواجهة وملاحظات الخطوط
+docs/                GUIDE.md و FEATURES.md وسجل القرارات وarchitecture والواجهة
 design/              design/tokens.json (مصدر الحقيقة للتصميم)
-scripts/             الفحوصات: graph_check و ui_lint و build_tokens
-src/factory/         كود التطبيق: main.py و manifest.py و ui_vocab.py والقوالب والتنسيقات
-data/projects/       المشاريع المسجلة (مستثناة من git)
+scripts/             الفحوصات: check_all و graph_check و ui_lint و build_tokens و features_check و smoke
+src/factory/         كود التطبيق: main.py و flow.py و orchestrator.py و models والقوالب والتنسيقات
+data/                المشاريع والطلبات والمبادئ والإعدادات (مستثناة من git)
 .github/workflows/   CI
 ```
 
