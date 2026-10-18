@@ -1,9 +1,0 @@
-{% macro log_view(lines) -%}
-<figure class="log-view" data-component="log-view">
-  <pre class="log-view__code"><code>
-    {%- for line in lines -%}
-    <span class="log-view__row">{{ line }}</span>
-    {%- endfor -%}
-  </code></pre>
-</figure>
-{%- endmacro %}

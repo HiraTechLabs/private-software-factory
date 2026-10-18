@@ -1,38 +1,22 @@
-"""App tests: registration, loading, dashboard truthfulness, health, UI catalog."""
+"""Web app tests: pages render, forms work, and numbers come from real data."""
 
-import sys
-from pathlib import Path
+from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
 import factory.main as main_module
-from factory.main import app
+import factory.store as store
 from factory.manifest import Manifest
 
 
-@pytest.fixture()
-def client(tmp_path, monkeypatch):
-    projects_dir = tmp_path / "projects-1"
-    projects_dir.mkdir(exist_ok=True)
-    monkeypatch.setattr(main_module, "PROJECTS_DIR", projects_dir)
-    return TestClient(
-        app=app,
-        base_url="http://testserver",
-        follow_redirects=False,
+def _demo_request(client, title="Add a greeting"):
+    client.post("/demo")
+    response = client.post(
+        "/projects/demo-shop/requests",
+        data={"title": title, "kind": "feature", "description": "Please add it."},
     )
-
-
-@pytest.fixture()
-def browser_client(tmp_path, monkeypatch):
-    """TestClient that follows redirects (for dashboard content assertions)."""
-    projects_dir = tmp_path / "projects-2"
-    projects_dir.mkdir(exist_ok=True)
-    monkeypatch.setattr(main_module, "PROJECTS_DIR", projects_dir)
-    return TestClient(app)
+    return response.headers["location"].rsplit("/", 1)[-1]
 
 
 def test_health(client):
@@ -41,10 +25,17 @@ def test_health(client):
     assert response.json() == {"status": "ok", "service": "private-software-factory"}
 
 
-def test_ui_renders(client):
-    response = client.get("/ui")
+def test_today_empty(web):
+    response = web.get("/")
     assert response.status_code == 200
-    assert "UI catalog" in response.text
+    assert "Nothing needs you" in response.text
+    assert "Choose how models answer" in response.text
+
+
+def test_projects_page_empty(web):
+    response = web.get("/projects")
+    assert response.status_code == 200
+    assert "No projects yet" in response.text
 
 
 def test_create_project_valid(client):
@@ -53,29 +44,25 @@ def test_create_project_valid(client):
         data={
             "name": "Order System",
             "description": "Sells things.",
+            "stack": "Python",
         },
     )
     assert response.status_code == 303
     config = main_module.PROJECTS_DIR / "order-system" / "project.yaml"
     assert config.exists()
     text = config.read_text(encoding="utf-8")
-    assert "principles_version: null" in text
     assert "human_approval_required_for_merge: true" in text
+    assert "human_approval_required_for_production: true" in text
+    assert (main_module.PROJECTS_DIR / "order-system" / "repo" / ".git").exists()
+    principles = main_module.PROJECTS_DIR / "order-system" / "principles"
+    assert (principles / "security.md").exists()
 
 
-def test_create_project_duplicate(client, browser_client):
+def test_create_project_duplicate(client):
     client.post("/projects", data={"name": "Same"})
     response = client.post("/projects", data={"name": "Same"})
     assert response.status_code == 303
     assert "error=duplicate" in response.headers["location"]
-
-
-def test_duplicate_error_visible(browser_client):
-    browser_client.post("/projects", data={"name": "Twice"})
-    browser_client.post("/projects", data={"name": "Twice"})
-    response = browser_client.get("/?error=duplicate")
-    assert response.status_code == 200
-    assert "already exists" in response.text
 
 
 def test_create_project_invalid_name(client):
@@ -86,8 +73,7 @@ def test_create_project_invalid_name(client):
 
 def test_arabic_name_with_explicit_id(client):
     response = client.post(
-        "/projects",
-        data={"name": "نظام الطلبات", "project_id": "orders-ar"},
+        "/projects", data={"name": "نظام الطلبات", "project_id": "orders-ar"}
     )
     assert response.status_code == 303
     config = main_module.PROJECTS_DIR / "orders-ar" / "project.yaml"
@@ -101,13 +87,6 @@ def test_arabic_name_without_id_returns_error(client):
     assert "error=missing_id" in response.headers["location"]
 
 
-def test_arabic_name_without_id_error_visible(browser_client):
-    browser_client.post("/projects", data={"name": "مشروع جديد"})
-    response = browser_client.get("/?error=missing_id")
-    assert response.status_code == 200
-    assert "lowercase letters, numbers, and hyphens" in response.text
-
-
 def test_path_traversal_id_rejected(client):
     response = client.post("/projects", data={"name": "Escape", "project_id": "../x"})
     assert response.status_code == 303
@@ -115,63 +94,113 @@ def test_path_traversal_id_rejected(client):
     assert not (main_module.PROJECTS_DIR.parent / "x").exists()
 
 
-def test_invalid_yaml_shows_error_state(client, browser_client):
-    directory = main_module.PROJECTS_DIR / "broken"
-    directory.mkdir()
-    (directory / "project.yaml").write_text(
-        "schema_version: 1\nname: Broken\n  id: [unclosed{",
-        encoding="utf-8",
+def test_create_demo_project(client):
+    response = client.post("/demo")
+    assert response.status_code == 303
+    assert response.headers["location"] == "/projects/demo-shop"
+    assert store.project_yaml("demo-shop").exists()
+    assert (store.repo_dir("demo-shop") / ".git").exists()
+
+
+def test_today_lists_computed(web):
+    web.post("/demo")
+    web.post(
+        "/projects/demo-shop/requests",
+        data={"title": "Add a greeting", "kind": "feature", "description": "hi"},
     )
-    response = browser_client.get("/")
-    assert response.status_code == 200
-    assert "data/projects/broken/project.yaml" in response.text
-    assert "error-state" in response.text
+    html = web.get("/").text
+    assert "1 thing needs you" in html
+    assert "Add a greeting" in html
+    assert "Needs your approval" in html
 
 
-def test_invalid_manifest_shows_error_state(client, browser_client):
-    directory = main_module.PROJECTS_DIR / "bad-id"
-    directory.mkdir()
-    (directory / "project.yaml").write_text(
-        "schema_version: 1\nid: Bad_ID\nname: Bad\n",
-        encoding="utf-8",
+def test_request_page_reaches_approval(web):
+    web.post("/demo")
+    change_id = web.post(
+        "/projects/demo-shop/requests",
+        data={"title": "Add a greeting", "kind": "feature", "description": "hi"},
+    ).url.path.rsplit("/", 1)[-1]
+    change = store.load_change("demo-shop", change_id)
+    assert change["state"] == "awaiting_approval"
+    page = web.get(f"/projects/demo-shop/requests/{change_id}")
+    assert page.status_code == 200
+    assert "Approve merge" in page.text
+    assert "notes/" in page.text
+
+
+def test_status_json(web):
+    web.post("/demo")
+    change_id = web.post(
+        "/projects/demo-shop/requests",
+        data={"title": "Add a greeting", "kind": "feature", "description": "hi"},
+    ).url.path.rsplit("/", 1)[-1]
+    data = web.get(f"/projects/demo-shop/requests/{change_id}/status.json").json()
+    assert data["state"] == "awaiting_approval"
+    assert data["kind"] == "need"
+
+
+def test_all_pages_return_200(web):
+    for path in ("/", "/projects", "/models", "/guide"):
+        assert web.get(path).status_code == 200
+    web.post("/demo")
+    assert web.get("/projects/demo-shop").status_code == 200
+
+
+def test_project_settings_saved(client):
+    client.post("/projects", data={"name": "Shop"})
+    response = client.post(
+        "/projects/shop/settings",
+        data={
+            "name": "Shop",
+            "description": "Sells",
+            "stack": "Python",
+            "repo_path": "",
+            "checks_text": "tests: python -m pytest",
+            "dev_command": "echo dev",
+            "prod_command": "echo prod",
+        },
     )
-    response = browser_client.get("/")
-    assert response.status_code == 200
-    assert "error-state" in response.text
-    assert "data/projects/bad-id/project.yaml" in response.text
+    assert response.status_code == 303
+    manifest = store.read_yaml(store.project_yaml("shop"))
+    assert manifest["checks"] == [{"name": "tests", "command": "python -m pytest"}]
+    assert manifest["environments"]["prod"]["command"] == "echo prod"
 
 
-def test_stats_are_computed(client, browser_client):
+def test_models_role_saved(client):
     client.post(
-        "/projects",
-        data={"name": "Alpha", "stack": "Python"},
+        "/models/roles/planning",
+        data={"provider": "ollama", "model": "llama3"},
     )
-    directory = main_module.PROJECTS_DIR / "broken"
-    directory.mkdir()
-    (directory / "project.yaml").write_text("[{", encoding="utf-8")
-    manifest_dir = main_module.PROJECTS_DIR / "bravo"
-    manifest_dir.mkdir()
-    (manifest_dir / "project.yaml").write_text(
-        "schema_version: 1\nid: bravo\nname: Bravo\n"
-        "ai_roles:\n"
-        "  planning:\n    enabled: true\n    model: demo\n"
-        "  execution:\n    enabled: true\n    model: demo\n",
-        encoding="utf-8",
+    settings = store.load_settings()
+    assert settings["planning_provider"] == "ollama"
+    assert settings["planning_model"] == "llama3"
+
+
+def test_local_model_settings_saved(client):
+    client.post(
+        "/models",
+        data={"ollama_url": "http://localhost:1234", "model_timeout_seconds": "60"},
     )
-    html = browser_client.get("/").text
-    assert "<strong>2</strong>" in html  # registered: alpha + bravo
-    assert "<strong>1</strong>" in html  # config errors: broken
-    assert "<strong>2</strong>" in html  # ai roles enabled: planning + execution
-    assert "Pending reviews" not in html
+    settings = store.load_settings()
+    assert settings["ollama_url"] == "http://localhost:1234"
+    assert settings["model_timeout_seconds"] == 60
 
 
-def test_principles_not_set_when_null(client, browser_client):
-    client.post("/projects", data={"name": "Gamma"})
-    html = browser_client.get("/").text
-    assert "Not set" in html
+def test_guide_page(web):
+    english = web.get("/guide")
+    assert english.status_code == 200
+    assert "Guide" in english.text
+    arabic = web.get("/guide?lang=ar")
+    assert arabic.status_code == 200
 
 
-def test_approval_flag_false_without_waiver_is_invalid(browser_client):
+def test_missing_project_redirects(client):
+    response = client.get("/projects/does-not-exist")
+    assert response.status_code == 303
+    assert "error=invalid_id" in response.headers["location"]
+
+
+def test_approval_flag_false_without_waiver_is_invalid():
     manifest = {
         "schema_version": 1,
         "id": "no-gate",
@@ -180,16 +209,6 @@ def test_approval_flag_false_without_waiver_is_invalid(browser_client):
     }
     with pytest.raises(ValidationError):
         Manifest.model_validate(manifest)
-    # and it shows as an error record on the dashboard, not a loaded project
-    directory = main_module.PROJECTS_DIR / "no-gate"
-    directory.mkdir()
-    (directory / "project.yaml").write_text(
-        "schema_version: 1\nid: no-gate\nname: No gate\n"
-        "approval_policy:\n  human_approval_required_for_merge: false\n",
-        encoding="utf-8",
-    )
-    html = browser_client.get("/").text
-    assert "waiver" in html
 
 
 def test_approval_flag_false_with_accepted_waiver_is_valid():
@@ -210,3 +229,15 @@ def test_approval_flag_false_with_accepted_waiver_is_valid():
 def test_manifest_id_pattern_rejects_traversal():
     with pytest.raises(ValidationError):
         Manifest.model_validate({"schema_version": 1, "id": "../x", "name": "x"})
+
+
+def test_registered_project_with_invalid_manifest_is_not_a_record(data_root):
+    directory = main_module.PROJECTS_DIR / "bad-id"
+    directory.mkdir()
+    (directory / "project.yaml").write_text(
+        "schema_version: 1\nid: Bad_ID\nname: Bad\n", encoding="utf-8"
+    )
+    records = main_module.load_project_records()
+    assert len(records) == 1
+    assert records[0]["manifest"] is None
+    assert records[0]["error"]

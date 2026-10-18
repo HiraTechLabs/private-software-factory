@@ -1,7 +1,8 @@
-# Proposed architecture graph for the Private Software Factory (target state).
-# Compatible with scripts/graph_check.py: existing node ids are kept, new work is `planned`.
-# New optional fields: `evidence` (test ids proving an implemented node works), `group` (draws the diagram) and `target_path` (where a planned node will live;
-# rename it to `path` and flip `status` to implemented in the commit that builds the node).
+# Architecture graph for the Private Software Factory.
+# Checked by scripts/graph_check.py. Existing node ids from ADRs 0001-0008 are kept.
+# An implemented node has a real `path` and proof in `evidence`; a planned node has `target_path`
+# (where it will live) and is flipped to `path` + `status: implemented` in the commit that builds it.
+# `group` draws the diagram.
 schema_version: 1
 project: factory
 nodes:
@@ -9,11 +10,11 @@ nodes:
   - id: web-app
     kind: service
     name: Factory web app
-    purpose: Every page the owner uses - Today, Projects, Requests, Models, Guide.
+    purpose: Every page the owner uses - Today, Projects, Project, Request, Models, Guide.
     path: src/factory/main.py
     owns: []
     status: implemented
-    evidence: ["tests/test_app.py::test_create_project_valid", "tests/test_app.py::test_duplicate_error_visible", "tests/test_app.py::test_stats_are_computed", "tests/test_app.py::test_health"]
+    evidence: ["tests/test_app.py::test_create_project_valid", "tests/test_app.py::test_today_lists_computed", "tests/test_app.py::test_request_page_reaches_approval", "tests/test_app.py::test_all_pages_return_200", "tests/test_app.py::test_health"]
     group: interface
   - id: ui-system
     kind: doc
@@ -22,20 +23,21 @@ nodes:
     path: design
     owns: ["design tokens", "component catalog", "status vocabulary"]
     status: implemented
-    evidence: ["tests/test_ui_catalog.py", "tests/test_tokens_contrast.py"]
+    evidence: ["tests/test_tokens_contrast.py::test_text_colors_meet_4_5_against_paper_and_card", "tests/test_ui_lint.py::test_ui_lint_passes_on_repo"]
     group: interface
   - id: guide
     kind: doc
     name: In-app guide
-    purpose: One plain-language page that explains the flow, shown at /guide.
-    target_path: docs/GUIDE.md
+    purpose: One plain-language page that explains the flow, shown at /guide in English or Arabic.
+    path: docs/GUIDE.md
     owns: ["owner-facing explanation"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_app.py::test_guide_page"]
     group: interface
   - id: records-view
     kind: module
     name: Records view
-    purpose: Reads a project's decisions and architecture graph and prepares them for the Decisions and Graph pages.
+    purpose: Reads a project's decisions and architecture graph and prepares them for the Decisions and Graph tabs.
     target_path: src/factory/records_view.py
     owns: []
     status: planned
@@ -44,9 +46,10 @@ nodes:
     kind: module
     name: Demo project
     purpose: Creates a tiny sample project that runs on the scripted demo model, so the whole flow can be tried in a minute.
-    target_path: src/factory/demo.py
+    path: src/factory/demo.py
     owns: []
-    status: planned
+    status: implemented
+    evidence: ["tests/test_app.py::test_create_demo_project"]
     group: interface
 
   # ---------- Engine: runs the one fixed flow ----------
@@ -54,125 +57,129 @@ nodes:
     kind: service
     name: Orchestrator
     purpose: Runs one change through the fixed flow in the background and stops at every human approval.
-    target_path: src/factory/orchestrator.py
+    path: src/factory/orchestrator.py
     owns: []
-    status: planned
+    status: implemented
+    evidence: ["tests/test_orchestrator.py::test_happy_path_demo", "tests/test_orchestrator.py::test_restart_recovery_marks_interrupted", "tests/test_orchestrator.py::test_send_back_note_reaches_prompt"]
     group: engine
   - id: flow
     kind: module
     name: Flow definition
     purpose: The fixed steps, the allowed state transitions, and who may trigger each one (machine, model, or human).
-    target_path: src/factory/flow.py
+    path: src/factory/flow.py
     owns: ["the fixed flow", "change states"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_flow.py::test_legal_and_illegal_transitions", "tests/test_flow.py::test_every_transition_target_is_a_state"]
     group: engine
   - id: context-builder
     kind: module
     name: Context builder
     purpose: Builds what each model role is told - the request, principles, decisions, graph, and file tree.
-    target_path: src/factory/context_builder.py
+    path: src/factory/context_builder.py
     owns: []
-    status: planned
+    status: implemented
+    evidence: ["tests/test_orchestrator.py::test_send_back_note_reaches_prompt"]
     group: engine
   - id: model-gateway
     kind: service
     name: Model gateway
     purpose: One interface for the planning, execution, and review roles. Providers - manual (you paste), local Ollama, scripted demo.
-    target_path: src/factory/models
+    path: src/factory/models/__init__.py
     owns: ["provider configuration"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_models.py::test_manual_round_trip", "tests/test_models.py::test_demo_answers", "tests/test_models.py::test_ollama_chat_ok"]
     group: engine
   - id: patch-applier
     kind: module
     name: Patch applier
     purpose: Turns the execution role's file blocks into a commit on the change branch, after validating every path and size.
-    target_path: src/factory/patch_applier.py
+    path: src/factory/patch_applier.py
     owns: []
-    status: planned
+    status: implemented
+    evidence: ["tests/test_patch_applier.py::test_reject_absolute_path", "tests/test_patch_applier.py::test_apply_writes_and_commits"]
     group: engine
   - id: check-runner
     kind: module
     name: Project check runner
     purpose: Runs only the commands the project manifest declares, with a timeout, and keeps the log.
-    target_path: src/factory/check_runner.py
+    path: src/factory/check_runner.py
     owns: []
-    status: planned
+    status: implemented
+    evidence: ["tests/test_check_runner.py::test_run_pass", "tests/test_check_runner.py::test_timeout"]
     group: engine
   - id: approvals
     kind: module
     name: Approvals
     purpose: The only place a merge or a production release can be approved, and only from a human click in the web app.
-    target_path: src/factory/approvals.py
+    path: src/factory/approvals.py
     owns: ["approval decisions"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_orchestrator.py::test_approval_refused_in_wrong_state", "tests/test_orchestrator.py::test_cancel_stops_a_request"]
     group: engine
   - id: deployer
     kind: module
     name: Deployer
     purpose: Runs the project's dev or production deploy command after the matching approval.
-    target_path: src/factory/deployer.py
+    path: src/factory/deployer.py
     owns: []
-    status: planned
+    status: implemented
+    evidence: ["tests/test_orchestrator.py::test_production_deploy_failure"]
     group: engine
   - id: git-ops
     kind: module
     name: Git operations
     purpose: Thin wrapper over the git command - init, worktree, commit, diff, merge.
-    target_path: src/factory/git_ops.py
+    path: src/factory/git_ops.py
     owns: []
-    status: planned
+    status: implemented
+    evidence: ["tests/test_git_ops.py::test_init_commit_and_worktree", "tests/test_git_ops.py::test_dirty_repo_detected"]
     group: engine
 
   # ---------- State and records: files, not a database ----------
   - id: manifest
     kind: module
     name: Manifest model
-    purpose: Pydantic v2 model for project.yaml, including checks, deploy commands, limits, and approval policy.
+    purpose: Pydantic v2 model for project.yaml, including checks, deploy commands, limits, providers, and approval policy.
     path: src/factory/manifest.py
     owns: []
     status: implemented
     evidence: ["tests/test_app.py::test_approval_flag_false_without_waiver_is_invalid", "tests/test_app.py::test_manifest_id_pattern_rejects_traversal"]
     group: state
-  - id: registry
-    kind: store
-    name: Project registry
-    purpose: Registered projects as data/projects/<id>/project.yaml (git-ignored).
-    path: data/projects
-    owns: ["project registrations"]
-    status: implemented
-    evidence: ["tests/test_app.py::test_create_project_valid", "tests/test_app.py::test_invalid_yaml_shows_error_state"]
-    group: state
   - id: change-store
-    kind: store
+    kind: module
     name: Change store
-    purpose: One folder per request - change.yaml plus plan, prompts, model answers, diff, check logs, review.
-    target_path: data/projects/*/changes
-    owns: ["requests", "change states", "step artifacts"]
-    status: planned
+    purpose: One folder per request - change.yaml plus plan, prompts, model answers, diff, check logs, review - written atomically.
+    path: src/factory/store.py
+    owns: ["requests", "change states", "step artifacts", "settings"]
+    status: implemented
+    evidence: ["tests/test_store.py::test_change_store_round_trip", "tests/test_store.py::test_settings_defaults_and_save", "tests/test_store.py::test_starter_principles_written"]
     group: state
   - id: audit-log
     kind: store
     name: Audit log
     purpose: Append-only list of who or what moved each change, and when.
-    target_path: data/projects/*/audit.jsonl
+    path: data/projects
     owns: ["audit events"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_store.py::test_audit_append"]
     group: state
   - id: shared-principles
-    kind: doc
+    kind: store
     name: Shared principles
     purpose: Rules every project follows - security, clean code, design patterns.
-    target_path: data/shared/principles
+    path: data/shared/principles
     owns: ["shared rules"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_store.py::test_starter_principles_written"]
     group: state
   - id: project-principles
-    kind: doc
+    kind: store
     name: Project principles
     purpose: Per-project rules - security, business, architecture, stack, clean code, performance.
-    target_path: data/projects/*/principles
+    path: data/projects
     owns: ["project rules"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_store.py::test_starter_principles_written"]
     group: state
   - id: decisions-log
     kind: doc
@@ -192,13 +199,23 @@ nodes:
     group: state
 
   # ---------- Projects: what the Factory builds ----------
+  - id: registry
+    kind: store
+    name: Project registry
+    purpose: Registered projects as data/projects/<id>/project.yaml (git-ignored).
+    path: data/projects
+    owns: ["project registrations"]
+    status: implemented
+    evidence: ["tests/test_app.py::test_create_project_valid", "tests/test_app.py::test_registered_project_with_invalid_manifest_is_not_a_record"]
+    group: projects
   - id: project-repo
     kind: store
     name: Project repository
-    purpose: One git repository per project, never shared. The Factory itself is registered as project 0. Models can only write on a change branch.
-    target_path: data/projects/*/repo
+    purpose: One git repository per project, never shared. Models can only write on a change branch.
+    path: data/projects
     owns: ["project codebase"]
-    status: planned
+    status: implemented
+    evidence: ["tests/test_git_ops.py::test_init_commit_and_worktree"]
     group: projects
   - id: git-server
     kind: external
@@ -221,6 +238,7 @@ nodes:
     path: scripts
     owns: []
     status: implemented
+    evidence: ["tests/test_ui_lint.py::test_ui_lint_passes_on_repo"]
     group: quality
   - id: ci
     kind: service
@@ -234,73 +252,79 @@ nodes:
     kind: doc
     name: Feature register
     purpose: Every feature the owner can see, marked working only when a named test proves it.
-    target_path: docs/FEATURES.md
+    path: docs/FEATURES.md
     owns: ["feature truth table"]
-    status: planned
+    status: implemented
     group: quality
   - id: e2e-smoke
     kind: module
     name: End-to-end smoke test
     purpose: Walks a demo request from intake to live through the real web app and prints pass or fail per step.
-    target_path: scripts/smoke.py
+    path: scripts/smoke.py
     owns: []
-    status: planned
+    status: implemented
     group: quality
 
 edges:
-  # ----- exists today -----
+  # ----- imports the checker can see (implemented depends_on must match a real import) -----
   - {from: web-app, to: manifest, kind: depends_on, note: "main.py loads and validates project.yaml through the manifest model.", status: implemented, decisions: ["0002", "0004"]}
-  - {from: web-app, to: registry, kind: reads, note: "Lists projects from data/projects.", status: implemented, decisions: ["0004"]}
-  - {from: web-app, to: registry, kind: writes, note: "Registration creates the directory and writes project.yaml atomically.", status: implemented, decisions: ["0004"]}
-  - {from: web-app, to: ui-system, kind: depends_on, note: "All pages use tokens, components, and the status vocabulary only.", status: implemented, decisions: ["0005"]}
-  - {from: checks, to: graph, kind: enforces, note: "graph_check.py validates graph.yaml and ADR references.", status: implemented, decisions: ["0008"]}
-  - {from: checks, to: ui-system, kind: enforces, note: "ui_lint.py and build_tokens.py enforce the UI system.", status: implemented, decisions: ["0005"]}
-  - {from: checks, to: decisions-log, kind: enforces, note: "ADR ids referenced by the graph or by waivers must exist.", status: implemented, decisions: ["0008"]}
-  - {from: ci, to: checks, kind: calls, note: "CI runs every check in a fresh environment.", status: implemented, decisions: ["0003"]}
-
-  # ----- quality: proof that things work -----
-  - {from: checks, to: feature-register, kind: enforces, note: "features_check.py fails when a feature marked working has no test", status: planned, decisions: []}
-  - {from: ci, to: e2e-smoke, kind: calls, note: "CI runs the smoke test after the unit tests.", status: planned, decisions: []}
-  - {from: e2e-smoke, to: web-app, kind: calls, note: "Drives the real pages and forms with the scripted demo model.", status: planned, decisions: []}
+  - {from: web-app, to: demo-project, kind: depends_on, note: "Create demo project button uses factory.demo.", status: implemented, decisions: []}
+  - {from: web-app, to: git-ops, kind: depends_on, note: "The create-project form initialises a repository.", status: implemented, decisions: []}
+  - {from: web-app, to: model-gateway, kind: calls, note: "Test connection button on the Models page.", status: implemented, decisions: []}
+  - {from: orchestrator, to: manifest, kind: depends_on, note: "Checks, deploy commands, limits, and roles come from the manifest.", status: implemented, decisions: ["0002"]}
+  - {from: orchestrator, to: model-gateway, kind: calls, note: "Planning, execution, and review roles.", status: implemented, decisions: []}
 
   # ----- interface -----
-  - {from: web-app, to: orchestrator, kind: calls, note: "Creating or retrying a request starts a run.", status: planned, decisions: []}
-  - {from: web-app, to: approvals, kind: calls, note: "The Approve and Send back buttons post here.", status: planned, decisions: ["0002"]}
-  - {from: web-app, to: change-store, kind: reads, note: "Today and Request pages are built from the change folders.", status: planned, decisions: []}
-  - {from: web-app, to: audit-log, kind: reads, note: "Activity list on every Request page.", status: planned, decisions: []}
-  - {from: web-app, to: model-gateway, kind: calls, note: "Test connection button on the Models page.", status: planned, decisions: []}
-  - {from: web-app, to: records-view, kind: depends_on, note: "Decisions and Graph tabs.", status: planned, decisions: []}
-  - {from: web-app, to: guide, kind: reads, note: "Renders /guide from docs/GUIDE.md.", status: planned, decisions: []}
-  - {from: web-app, to: demo-project, kind: calls, note: "Create demo project button on Today.", status: planned, decisions: []}
-  - {from: demo-project, to: registry, kind: writes, note: "Registers the demo project.", status: planned, decisions: []}
-  - {from: demo-project, to: git-ops, kind: depends_on, note: "Creates the demo repository.", status: planned, decisions: []}
+  - {from: web-app, to: ui-system, kind: depends_on, note: "All pages use tokens, components, and the status vocabulary only.", status: implemented, decisions: ["0005", "0010"]}
+  - {from: web-app, to: orchestrator, kind: calls, note: "Creating or retrying a request starts a run.", status: implemented, decisions: []}
+  - {from: web-app, to: approvals, kind: calls, note: "The Approve, Send back, Cancel, and submit-answer buttons post here.", status: implemented, decisions: ["0002"]}
+  - {from: web-app, to: change-store, kind: reads, note: "Today and Request pages are built from the change folders.", status: implemented, decisions: []}
+  - {from: web-app, to: audit-log, kind: reads, note: "Activity list on every Request page.", status: implemented, decisions: []}
+  - {from: web-app, to: registry, kind: reads, note: "Lists projects from data/projects.", status: implemented, decisions: ["0004"]}
+  - {from: web-app, to: registry, kind: writes, note: "Creating a project writes project.yaml atomically.", status: implemented, decisions: ["0004"]}
+  - {from: web-app, to: guide, kind: reads, note: "Renders /guide from docs/GUIDE.md.", status: implemented, decisions: []}
+  - {from: web-app, to: demo-project, kind: calls, note: "Create demo project button on Today.", status: implemented, decisions: []}
+  - {from: web-app, to: records-view, kind: depends_on, note: "Decisions and Graph tabs (phase G).", status: planned, decisions: []}
   - {from: records-view, to: project-repo, kind: reads, note: "Reads docs/decisions and docs/architecture/graph.yaml of the project.", status: planned, decisions: []}
+  - {from: demo-project, to: registry, kind: writes, note: "Registers the demo project.", status: implemented, decisions: []}
+  - {from: demo-project, to: git-ops, kind: calls, note: "Creates the demo repository and its first commit.", status: implemented, decisions: []}
+  - {from: demo-project, to: change-store, kind: writes, note: "Writes the starter principle files.", status: implemented, decisions: []}
 
   # ----- engine -----
-  - {from: orchestrator, to: flow, kind: depends_on, note: "Only moves a change along transitions the flow allows.", status: planned, decisions: ["0002"]}
-  - {from: orchestrator, to: manifest, kind: reads, note: "Checks, deploy commands, limits, and roles come from the manifest.", status: planned, decisions: ["0002"]}
-  - {from: orchestrator, to: change-store, kind: writes, note: "Saves state and every artifact of each step.", status: planned, decisions: []}
-  - {from: orchestrator, to: audit-log, kind: writes, note: "One event per transition.", status: planned, decisions: []}
-  - {from: orchestrator, to: context-builder, kind: calls, note: "Asks for the context of each role.", status: planned, decisions: []}
-  - {from: orchestrator, to: model-gateway, kind: calls, note: "Planning, execution, and review roles.", status: planned, decisions: []}
-  - {from: orchestrator, to: patch-applier, kind: calls, note: "Build step.", status: planned, decisions: []}
-  - {from: orchestrator, to: check-runner, kind: calls, note: "Checks step.", status: planned, decisions: []}
-  - {from: orchestrator, to: deployer, kind: calls, note: "Deploy steps, only after approval.", status: planned, decisions: []}
-  - {from: orchestrator, to: git-ops, kind: depends_on, note: "Merge after approval.", status: planned, decisions: []}
-  - {from: approvals, to: flow, kind: depends_on, note: "Approval is accepted only in an awaiting state.", status: planned, decisions: ["0002"]}
-  - {from: approvals, to: change-store, kind: writes, note: "Records the decision on the change.", status: planned, decisions: []}
-  - {from: approvals, to: audit-log, kind: writes, note: "Records who approved what, and when.", status: planned, decisions: []}
-  - {from: approvals, to: orchestrator, kind: calls, note: "Resumes the run after approval.", status: planned, decisions: []}
-  - {from: context-builder, to: shared-principles, kind: reads, note: "Included in every role's context.", status: planned, decisions: []}
-  - {from: context-builder, to: project-principles, kind: reads, note: "Included in every role's context.", status: planned, decisions: []}
-  - {from: context-builder, to: decisions-log, kind: reads, note: "Index of the project's decisions.", status: planned, decisions: ["0008"]}
-  - {from: context-builder, to: project-repo, kind: reads, note: "File tree and the relevant files.", status: planned, decisions: []}
-  - {from: model-gateway, to: local-model-server, kind: calls, note: "Ollama provider.", status: planned, decisions: []}
-  - {from: patch-applier, to: manifest, kind: reads, note: "Protected paths and size limits.", status: planned, decisions: []}
-  - {from: patch-applier, to: git-ops, kind: depends_on, note: "Branch and commit.", status: planned, decisions: []}
-  - {from: patch-applier, to: project-repo, kind: writes, note: "Writes only on the change branch worktree.", status: planned, decisions: []}
-  - {from: check-runner, to: manifest, kind: reads, note: "The only source of runnable commands.", status: planned, decisions: []}
-  - {from: check-runner, to: project-repo, kind: reads, note: "Runs inside the change worktree.", status: planned, decisions: []}
-  - {from: deployer, to: manifest, kind: reads, note: "Dev and production commands.", status: planned, decisions: []}
+  - {from: orchestrator, to: flow, kind: calls, note: "Only moves a change along transitions the flow allows.", status: implemented, decisions: ["0002", "0013"]}
+  - {from: orchestrator, to: change-store, kind: writes, note: "Saves state and every artifact of each step.", status: implemented, decisions: ["0013"]}
+  - {from: orchestrator, to: audit-log, kind: writes, note: "One event per transition.", status: implemented, decisions: ["0013"]}
+  - {from: orchestrator, to: context-builder, kind: calls, note: "Asks for the context of each role.", status: implemented, decisions: ["0012"]}
+  - {from: orchestrator, to: patch-applier, kind: calls, note: "Build step.", status: implemented, decisions: ["0012"]}
+  - {from: orchestrator, to: check-runner, kind: calls, note: "Checks step.", status: implemented, decisions: []}
+  - {from: orchestrator, to: deployer, kind: calls, note: "Deploy steps, only after approval.", status: implemented, decisions: []}
+  - {from: orchestrator, to: git-ops, kind: calls, note: "Merge after approval.", status: implemented, decisions: []}
+  - {from: orchestrator, to: project-repo, kind: writes, note: "Worktree per change; merge into the default branch.", status: implemented, decisions: []}
+  - {from: approvals, to: flow, kind: reads, note: "Approval is accepted only in an awaiting state.", status: implemented, decisions: ["0002"]}
+  - {from: approvals, to: change-store, kind: writes, note: "Records the decision on the change.", status: implemented, decisions: ["0013"]}
+  - {from: approvals, to: audit-log, kind: writes, note: "Records who approved what, and when.", status: implemented, decisions: ["0013"]}
+  - {from: approvals, to: orchestrator, kind: calls, note: "Resumes the run after approval.", status: implemented, decisions: []}
+  - {from: context-builder, to: shared-principles, kind: reads, note: "Included in every role's context.", status: implemented, decisions: ["0012"]}
+  - {from: context-builder, to: project-principles, kind: reads, note: "Included in every role's context.", status: implemented, decisions: ["0012"]}
+  - {from: context-builder, to: decisions-log, kind: reads, note: "Index of the project's decisions.", status: implemented, decisions: ["0008"]}
+  - {from: context-builder, to: project-repo, kind: reads, note: "File tree and the relevant files.", status: implemented, decisions: ["0012"]}
+  - {from: context-builder, to: change-store, kind: reads, note: "The request and the earlier step artifacts.", status: implemented, decisions: ["0012"]}
+  - {from: model-gateway, to: local-model-server, kind: calls, note: "Ollama provider.", status: planned, decisions: ["0011"]}
+  - {from: patch-applier, to: manifest, kind: reads, note: "Protected paths and size limits.", status: implemented, decisions: ["0012"]}
+  - {from: patch-applier, to: git-ops, kind: calls, note: "Branch and commit.", status: implemented, decisions: ["0012"]}
+  - {from: patch-applier, to: project-repo, kind: writes, note: "Writes only on the change branch worktree.", status: implemented, decisions: ["0012"]}
+  - {from: check-runner, to: manifest, kind: reads, note: "The only source of runnable commands.", status: implemented, decisions: []}
+  - {from: check-runner, to: project-repo, kind: reads, note: "Runs inside the change worktree.", status: implemented, decisions: []}
+  - {from: deployer, to: manifest, kind: reads, note: "Dev and production commands.", status: implemented, decisions: ["0011"]}
+  - {from: deployer, to: project-repo, kind: reads, note: "Runs with the project repository as the working directory.", status: implemented, decisions: ["0011"]}
   - {from: git-ops, to: git-server, kind: calls, note: "Runs git.", status: planned, decisions: []}
-  - {from: project-repo, to: git-server, kind: depends_on, note: "Stored as a git repository.", status: planned, decisions: []}
+  - {from: project-repo, to: git-server, kind: calls, note: "Stored as a git repository.", status: planned, decisions: []}
+
+  # ----- quality: proof that things work -----
+  - {from: checks, to: graph, kind: enforces, note: "graph_check.py validates graph.yaml and ADR references.", status: implemented, decisions: ["0008"]}
+  - {from: checks, to: ui-system, kind: enforces, note: "ui_lint.py and build_tokens.py enforce the UI system.", status: implemented, decisions: ["0005", "0010"]}
+  - {from: checks, to: decisions-log, kind: enforces, note: "ADR ids referenced by the graph or by waivers must exist.", status: implemented, decisions: ["0008"]}
+  - {from: checks, to: feature-register, kind: enforces, note: "features_check.py fails when a feature marked working has no test.", status: implemented, decisions: []}
+  - {from: ci, to: checks, kind: calls, note: "CI runs check_all.py, the single check command, in a fresh environment.", status: implemented, decisions: ["0003"]}
+  - {from: ci, to: e2e-smoke, kind: calls, note: "check_all.py runs the smoke test after the unit tests.", status: implemented, decisions: []}
+  - {from: e2e-smoke, to: web-app, kind: calls, note: "Drives the real pages and forms with the scripted demo model.", status: implemented, decisions: []}

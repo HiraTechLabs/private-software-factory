@@ -1,7 +1,8 @@
-"""Contrast checks for the design tokens (WCAG) — docs/ui/UI_SYSTEM.md, ADR 0005.
+"""Contrast checks for the design tokens (WCAG) — docs/ui/UI_SYSTEM.md, ADR 0010.
 
-Requires 4.5:1 for `ink`, `steel`, and the four `*-text` colors against `surface` and
-`paper` in both themes, and 3:1 for the six light colors against `surface`.
+Requires 4.5:1 for the text colors (`ink`, `ink-soft`, `accent`) on `card` and
+`paper`, 4.5:1 for `accent-ink` on `accent`, and 3:1 for the status colors
+(`need`, `work`, `done`, `fail`, `idle`) on `card`, in both themes.
 """
 
 import json
@@ -12,6 +13,9 @@ TOKENS = json.loads(
         encoding="utf-8"
     )
 )["color"]
+
+TEXT_COLORS = ("ink", "ink-soft", "accent")
+STATUS_COLORS = ("need", "work", "done", "fail", "idle")
 
 
 def channel(channel_hex: str) -> float:
@@ -32,27 +36,26 @@ def contrast_ratio(a: str, b: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def test_text_colors_meet_4_5_against_paper_and_surface():
+def test_text_colors_meet_4_5_against_paper_and_card():
     for theme in ("light", "dark"):
         palette = TOKENS[theme]
-        for name in (
-            "ink",
-            "steel",
-            "run-text",
-            "hold-text",
-            "stop-text",
-            "shadow-text",
-        ):
-            for background in ("paper", "surface"):
+        for name in TEXT_COLORS:
+            for background in ("paper", "card"):
                 ratio = contrast_ratio(palette[name], palette[background])
-                assert ratio >= 4.5, (
-                    f"{theme}/{name} on {background}: {ratio:.2f} < 4.5"
-                )
+                message = f"{theme}/{name} on {background}: {ratio:.2f} < 4.5"
+                assert ratio >= 4.5, message
 
 
-def test_light_kinds_meet_3_against_surface():
+def test_accent_ink_meets_4_5_on_accent():
     for theme in ("light", "dark"):
         palette = TOKENS[theme]
-        for name in ("run", "hold", "stop", "shadow", "done", "idle"):
-            ratio = contrast_ratio(palette[name], palette["surface"])
-            assert ratio >= 3.0, f"{theme}/{name} on surface: {ratio:.2f} < 3.0"
+        ratio = contrast_ratio(palette["accent-ink"], palette["accent"])
+        assert ratio >= 4.5, f"{theme}/accent-ink on accent: {ratio:.2f} < 4.5"
+
+
+def test_status_colors_meet_3_against_card():
+    for theme in ("light", "dark"):
+        palette = TOKENS[theme]
+        for name in STATUS_COLORS:
+            ratio = contrast_ratio(palette[name], palette["card"])
+            assert ratio >= 3.0, f"{theme}/{name} on card: {ratio:.2f} < 3.0"

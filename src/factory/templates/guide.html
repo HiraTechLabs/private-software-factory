@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Guide — Software Factory{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Guide</h1>
+    <p class="muted">Everything the Factory does, in plain words.</p>
+  </div>
+  <div class="row-actions">
+    {% if lang == 'ar' %}
+    <a class="btn quiet" href="/guide">English</a>
+    {% else %}
+    <a class="btn quiet" href="/guide?lang=ar">العربية</a>
+    {% endif %}
+  </div>
+</header>
+<article class="prose">
+{{ guide_html | safe }}
+</article>
+{% endblock %}

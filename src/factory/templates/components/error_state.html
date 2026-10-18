@@ -1,8 +1,0 @@
-{% macro error_state(title, message, path=None, detail=None) -%}
-<section class="error-state" data-component="error-state">
-  <h3>{{ title }}</h3>
-  <p>{{ message }}</p>
-  {% if path %}<code class="error-state__file">{{ path }}</code>{% endif %}
-  {% if detail %}<pre class="error-state__detail"><code>{{ detail }}</code></pre>{% endif %}
-</section>
-{%- endmacro %}

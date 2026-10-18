@@ -13,15 +13,5 @@ jobs:
           python-version: "3.11"
       - name: Install
         run: pip install -e ".[dev]"
-      - name: Lint
-        run: ruff check .
-      - name: Format
-        run: ruff format --check .
-      - name: Tests
-        run: pytest
-      - name: Architecture graph
-        run: python scripts/graph_check.py --check
-      - name: UI lint
-        run: python scripts/ui_lint.py
-      - name: Tokens build
-        run: python scripts/build_tokens.py --check
+      - name: All checks
+        run: python scripts/check_all.py

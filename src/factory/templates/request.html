@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% import "components.html" as c %}
+{% block title %}{{ change.title }} — Software Factory{% endblock %}
+{% block content %}
+<p class="muted"><a href="/projects">Projects</a> / <a href="/projects/{{ manifest.id }}">{{ manifest.name }}</a> / <span class="mono">{{ change.id }}</span></p>
+<p class="hero">{{ change.title }}</p>
+<p class="sub">{{ 'Bug fix' if change.kind == 'bug' else 'Feature request' }}. Created {{ change.created }}.</p>
+
+{{ c.pipeline(ui_vocab.FLOW_STEPS, pipe) }}
+
+<div class="next"><b>What happens next:</b>
+  {% if change.state == 'awaiting_approval' %}When you approve, the change is merged into <span class="mono">{{ manifest.default_branch }}</span> and sent to dev. Nothing reaches production without a second approval from you.
+  {% elif change.state == 'awaiting_prod' %}When you approve, the production command runs and the change becomes Live.
+  {% elif change.state == 'waiting_for_you' %}Paste the model's answer below; the request then continues on its own.
+  {% elif change.state in ('failed', 'blocked', 'interrupted') %}Use "Try this step again" to resume, or cancel the request.
+  {% elif change.state == 'live' %}The change is live. Nothing more is needed.
+  {% elif change.state == 'cancelled' %}This request was cancelled.
+  {% else %}The Factory is moving this request along the path by itself.
+  {% endif %}
+</div>
+
+<div class="cols">
+  <div>
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <a href="?tab=plan" {% if tab == 'plan' %}aria-current="page"{% endif %}>Plan</a>
+        <a href="?tab=changes" {% if tab == 'changes' %}aria-current="page"{% endif %}>Changes</a>
+        <a href="?tab=checks" {% if tab == 'checks' %}aria-current="page"{% endif %}>Checks</a>
+        <a href="?tab=review" {% if tab == 'review' %}aria-current="page"{% endif %}>Review</a>
+      </div>
+      {% if tab == 'changes' %}
+        {{ c.diff_view(artifacts.diff) }}
+      {% elif tab == 'checks' %}
+        {{ c.log_view(artifacts.checks_log, 'No checks have run yet.') }}
+      {% elif tab == 'review' %}
+        {% if artifacts.review %}<pre class="log">{{ artifacts.review }}</pre>{% else %}<p class="muted">The review has not run yet.</p>{% endif %}
+      {% else %}
+        {% if artifacts.plan %}<pre class="log">{{ artifacts.plan }}</pre>{% else %}<p class="muted">The plan has not been written yet.</p>{% endif %}
+      {% endif %}
+    </div>
+
+    {% if manual %}
+    <section class="panel panel-body" style="margin-block-start:16px">
+      <h3 style="margin-block-start:0">Waiting for your pasted answer</h3>
+      <p class="muted">The {{ manual.step }} step uses provider "{{ manual.provider }}". Copy the prompt into any AI, then paste the answer back.</p>
+      <label>Prompt (read-only)
+        <textarea class="prompt" readonly id="prompt-text">{{ manual.prompt }}</textarea>
+      </label>
+      <div class="form-actions">
+        <button class="btn quiet" type="button" id="copy-prompt">Copy prompt</button>
+      </div>
+      <form action="/projects/{{ manifest.id }}/requests/{{ change.id }}/submit-answer" method="post" class="form-grid" style="margin-block-start:12px">
+        <label>Paste the answer
+          <textarea name="answer" rows="6" required></textarea>
+        </label>
+        <div class="form-actions">
+          <button class="btn" type="submit">Submit answer</button>
+        </div>
+      </form>
+    </section>
+    {% endif %}
+
+    {% if artifacts.dev_log or artifacts.prod_log %}
+    <section class="panel panel-body" style="margin-block-start:16px">
+      <h3 style="margin-block-start:0">Deploy logs</h3>
+      {% if artifacts.dev_log %}<h4>Dev</h4>{{ c.log_view(artifacts.dev_log) }}{% endif %}
+      {% if artifacts.prod_log %}<h4>Production</h4>{{ c.log_view(artifacts.prod_log) }}{% endif %}
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="panel decide" aria-label="Your decision">
+    <h3>Your decision</h3>
+    <p>{{ c.status(ui_vocab.kind_for_state(change.state), ui_vocab.label_for_state(change.state)) }}</p>
+    <ul class="facts">
+      <li><span>Checks</span><span>{{ change.checks_summary or 'Not run yet' }}</span></li>
+      <li><span>Review</span><span>{{ change.review_verdict or 'Not run yet' }}</span></li>
+      <li><span>Changes</span><span>{% if change.files_changed %}{{ change.files_changed | length }} file(s) changed{% else %}Not built yet{% endif %}</span></li>
+    </ul>
+
+    {% if change.state == 'awaiting_approval' %}
+      {% if change.review_verdict == 'changes' %}
+      <p class="alert" role="alert">The review model suggested changes. You can still approve, or send it back.</p>
+      {% endif %}
+      <form action="/projects/{{ manifest.id }}/requests/{{ change.id }}/approve-merge" method="post">
+        <button class="btn" type="submit">Approve merge</button>
+      </form>
+      <form action="/projects/{{ manifest.id }}/requests/{{ change.id }}/send-back" method="post">
+        <label class="muted" for="note">Or send it back with a note</label>
+        <textarea name="note" id="note" placeholder="What should change?"></textarea>
+        <button class="btn quiet" type="submit" style="margin-block-start:8px">Send back</button>
+      </form>
+    {% elif change.state == 'awaiting_prod' %}
+      <form action="/projects/{{ manifest.id }}/requests/{{ change.id }}/approve-production" method="post">
+        <button class="btn" type="submit">Approve production</button>
+      </form>
+    {% endif %}
+
+    {% if change.state in ('failed', 'blocked', 'interrupted') or change.state == 'waiting_for_you' %}
+      {% if change.failure_reason %}<p class="muted">{{ change.failure_reason }}</p>{% endif %}
+      <form action="/projects/{{ manifest.id }}/requests/{{ change.id }}/retry" method="post">
+        <button class="btn" type="submit">Try this step again</button>
+      </form>
+    {% endif %}
+
+    {% if change.state not in ('live', 'cancelled') %}
+      <form action="/projects/{{ manifest.id }}/requests/{{ change.id }}/cancel" method="post">
+        <button class="btn danger" type="submit">Cancel request</button>
+      </form>
+    {% endif %}
+  </aside>
+</div>
+
+<h2 class="section">Activity</h2>
+<ul class="activity panel panel-body">
+  {% for event in events %}
+  <li><span class="muted">{{ event.time }}</span><span>{{ event.note or (event.from + ' to ' + event.to) }} <span class="muted">({{ event.actor }})</span></span></li>
+  {% else %}
+  <li><span class="muted">—</span><span>No activity yet.</span></li>
+  {% endfor %}
+</ul>
+{% endblock %}
+
+{% block scripts %}
+{% if ui_vocab.kind_for_state(change.state) == 'work' or change.state == 'waiting_for_you' %}
+<script>
+(function () {
+  var url = "/projects/{{ manifest.id }}/requests/{{ change.id }}/status.json";
+  var current = "{{ change.state }}";
+  var timer = setInterval(function () {
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      if (data.state && data.state !== current) { clearInterval(timer); window.location.reload(); }
+    }).catch(function () {});
+  }, 2000);
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+  var button = document.getElementById("copy-prompt");
+  if (!button) { return; }
+  button.addEventListener("click", function () {
+    var box = document.getElementById("prompt-text");
+    box.select();
+    if (navigator.clipboard) { navigator.clipboard.writeText(box.value); }
+  });
+})();
+</script>
+{% endblock %}

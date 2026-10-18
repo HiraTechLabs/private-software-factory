@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% import "components.html" as c %}
+{% block title %}{{ manifest.name }} — Software Factory{% endblock %}
+{% block content %}
+<p class="muted"><a href="/projects">Projects</a> / <span class="mono">{{ manifest.id }}</span></p>
+{{ c.page_header(manifest.name, manifest.description or 'A project the Factory manages for you.') }}
+
+<div class="tabs" role="tablist">
+  <a href="/projects/{{ manifest.id }}" {% if request.query_params.get('tab', 'requests') == 'requests' %}aria-current="page"{% endif %}>Requests</a>
+  <a href="/projects/{{ manifest.id }}?tab=settings" {% if request.query_params.get('tab') == 'settings' %}aria-current="page"{% endif %}>Settings</a>
+</div>
+
+{% if request.query_params.get('tab') == 'settings' %}
+<section class="panel panel-body" style="margin-block-start:16px">
+  <form action="/projects/{{ manifest.id }}/settings" method="post" class="form-grid">
+    <label>Project name
+      <input name="name" value="{{ manifest.name }}" required maxlength="80">
+    </label>
+    <label>Description
+      <textarea name="description" rows="2" maxlength="500">{{ manifest.description }}</textarea>
+    </label>
+    <label>Technology stack
+      <input name="stack" value="{{ manifest.stack }}">
+    </label>
+    <label>Folder on this computer (empty to use the Factory's own repository)
+      <input name="repo_path" value="{{ manifest.repo_path }}">
+    </label>
+    <label>Checks (one per line, name: command)
+      <textarea name="checks_text" rows="4">{% for check in manifest.checks %}{{ check.name }}: {{ check.command }}
+{% endfor %}</textarea>
+    </label>
+    <div class="form-row">
+      <label>Dev deploy command
+        <input name="dev_command" value="{{ manifest.environments.dev.command }}">
+      </label>
+      <label>Production deploy command
+        <input name="prod_command" value="{{ manifest.environments.prod.command }}">
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save settings</button>
+      <span class="muted">Principles live in <span class="mono">{{ principles_path }}</span> — edit them in any editor.</span>
+    </div>
+  </form>
+</section>
+{% else %}
+<section class="panel panel-body" style="margin-block-start:16px">
+  <h3 style="margin-block-start:0">New request</h3>
+  <form action="/projects/{{ manifest.id }}/requests" method="post" class="form-grid">
+    <label>What do you want to change?
+      <input name="title" placeholder="e.g. Add a greeting function" required maxlength="120">
+    </label>
+    <div class="form-row">
+      <label>Kind
+        <select name="kind">
+          <option value="feature">Feature</option>
+          <option value="bug">Bug fix</option>
+        </select>
+      </label>
+    </div>
+    <label>Details
+      <textarea name="description" rows="3" maxlength="2000" placeholder="Describe the change in plain words."></textarea>
+    </label>
+    <div class="form-actions">
+      <button class="btn" type="submit">Send request</button>
+    </div>
+  </form>
+</section>
+
+<h2 class="section">Requests</h2>
+{% if changes %}
+  {% for change in changes %}
+  <div class="row{% if change.state in ('awaiting_approval', 'awaiting_prod', 'waiting_for_you', 'interrupted') %} need{% elif change.state in ('failed', 'blocked') %} fail{% endif %}">
+    <div>
+      <b>{{ change.title }}</b> <span class="mono small">{{ change.id }}</span><br>
+      {{ c.status(ui_vocab.kind_for_state(change.state), ui_vocab.label_for_state(change.state)) }}
+    </div>
+    <div class="row-actions">
+      <a class="btn quiet" href="/projects/{{ manifest.id }}/requests/{{ change.id }}">Open</a>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  {{ c.empty_state('No requests yet', 'Send your first request using the form above.') }}
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,7 +1,0 @@
-{% macro button(label, href=None, variant="primary", type=None) -%}
-  {% if href %}
-  <a class="button button--{{ variant }}" data-component="button" href="{{ href }}">{{ label }}</a>
-  {% else %}
-  <button class="button button--{{ variant }}" data-component="button" type="{{ type or "button" }}">{{ label }}</button>
-  {% endif %}
-{%- endmacro %}

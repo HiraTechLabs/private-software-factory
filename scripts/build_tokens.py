@@ -24,7 +24,7 @@ HEADER = (
 def build_tokens_css(tokens: dict) -> str:
     lines = [HEADER, ":root {", "  color-scheme: light dark;"]
     for key, value in tokens["color"]["light"].items():
-        lines.append(f"  --c-{key.replace('-', '_')}: {value};")
+        lines.append(f"  --c-{key}: {value};")
     lines.append(f"  --font-sans: {tokens['font']['sans']};")
     lines.append(f"  --font-mono: {tokens['font']['mono']};")
     for group in ("size", "space", "radius", "layout"):
@@ -35,7 +35,7 @@ def build_tokens_css(tokens: dict) -> str:
     lines.append("@media (prefers-color-scheme: dark) {")
     lines.append("  :root {")
     for key, value in tokens["color"]["dark"].items():
-        lines.append(f"    --c-{key.replace('-', '_')}: {value};")
+        lines.append(f"    --c-{key}: {value};")
     lines.append("    color-scheme: dark;")
     lines.append("  }")
     lines.append("}")

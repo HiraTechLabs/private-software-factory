@@ -1,124 +1,52 @@
 # UI system
 
-Related decision: ADR 0005 (status: proposed). This document is the binding UI contract; changes
-to tokens, components, or enums are UI system changes and require an ADR plus an update to this
-file, the catalog page (`/ui`), `tests/test_ui_catalog.py`, and `tests/test_tokens_contrast.py`.
-ملخص بالعربية: `UI_SYSTEM.ar.md`.
+The Factory's interface is calm and plain. It is built from design tokens, a small set of
+plain-named components, and a closed status vocabulary. This file is the record of that system;
+`docs/ui/mockup.html` is the visual reference. See ADR 0010.
 
-## Brief
+## Look
 
-- **Users.** One operator who owns the Factory, occasionally a reviewer.
-- **Jobs.** Review a change with its evidence; approve or reject at gates; see what is running,
-  waiting, or broken; trace a change to its rules, decisions, and architecture.
-- **Context.** Long sessions, dense information. The UI is a workbench, not a marketing page.
-- **Languages.** English now. Arabic (RTL) is planned; all layout properties are logical
-  (`inline`/`block`) and all themes are tokenized so an RTL flag later is a data change.
-
-## Concept: the Line
-
-The Factory's flow is the product, so the flow is shown as a Line: `intake > plan > build >
-checks > review > merge > dev > prod`. Color means state and nothing else. Boldness is spent in
-one place only — the LineRail. Everything else is quiet: paper, ink, hairlines.
-
-## Principles
-
-1. **State first.** Every object shows its state with a StateLight plus a text label drawn from
-   the closed enums in `src/factory/ui_vocab.py`.
-2. **Evidence first.** No claim without a source. Every number is computed from data, or the UI
-   says "Not available yet"; never a hard-coded 0.
-3. **Gates are explicit.** Approve and reject actions exist only inside the Gate component. The
-   Gate shows what is being approved, what machines verified, what models said (with ModeTag),
-   and what is unverified.
-4. **Autonomy is visible.** Each step shows `manual`, `shadow`, or `live` via ModeTag.
-5. **References are links.** Rules, decisions, and graph nodes render as RefChip links, not prose.
-6. **Quiet chrome.** No decorative gradients, shadows, or entrance animations. Motion only
-   answers an action. Color never carries meaning alone — it always sits beside a text label.
+- Light paper page, deep teal accent for buttons and links, dark teal left rail, rounded panels,
+  comfortable 17 px text, generous spacing.
+- Status colors: **needs you** amber, **working** blue, **done** green, **failed** red,
+  **not started** grey. A status always shows a text label as well as a color.
+- Boldness is spent in two places only: the amber "needs you" rows on Today, and the Pipeline on a
+  Request page. Everything else stays quiet.
+- Dark theme follows the operating system setting (`prefers-color-scheme`).
+- Type: the system font stack, with an Arabic-capable fallback. Monospace only for ids, paths, and
+  code. Sentence case; no all-caps labels.
+- Only logical CSS properties (`margin-inline-start`, not `margin-left`), so Arabic right-to-left
+  stays possible later.
 
 ## Tokens
 
-Source of truth: `design/tokens.json`, generated into `static/tokens.css` by
-`scripts/build_tokens.py`. CSS never uses literal hex, rgb, or hsl values; it uses
-`var(--c-*)`, `var(--size-*)`, `var(--space-*)`, `var(--radius-*)`, and `var(--layout-*)`.
-The primary button is solid `ink` on `paper`. There is no brand accent color.
-The default theme follows `prefers-color-scheme`; light values are the default in media queries
-that target light, dark values the override.
+`design/tokens.json` is the source of truth; `scripts/build_tokens.py` generates
+`src/factory/static/tokens.css`. Colors: `ink`, `ink-soft`, `paper`, `card`, `line`, `accent`,
+`accent-ink`, `need`, `need-bg`, `work`, `done`, `fail`, `fail-bg`, `idle` (plus rail and a few
+surface helpers). Sizes: control radius 8 px, panel radius 12 px, rail 232 px, base font 17 px.
+`tests/test_tokens_contrast.py` proves the text colors meet 4.5:1 and the status colors meet 3:1 on
+`card` in both themes.
 
-## Type
+## Vocabulary
 
-- Sans for prose and labels, mono for identifiers: task ids, rule ids, commit hashes, paths,
-  logs, diffs.
-- Font stack (no font host; see `docs/ui/fonts-todo.md`):
-  sans `IBM Plex Sans, IBM Plex Sans Arabic, system-ui, sans-serif`,
-  mono `IBM Plex Mono, ui-monospace, monospace`.
-- Sentence case everywhere. No all-caps, no letter-spacing on labels.
-- Line length under 72ch (`--layout-measure`).
+- **Status** — where something is now (a colored dot plus a text label). Kinds: `idle`, `work`,
+  `need`, `done`, `fail`.
+- **Pipeline** — the nine steps of the flow on a Request page.
+- **Your decision** — the sticky box on a Request page with the approve, send-back, and cancel
+  actions.
+- **Provider words** — "You paste", "Local model", "Demo model".
 
-## Layout
+Labels are defined once in `src/factory/ui_vocab.py`; templates read them from there, never as
+literals.
 
-Left rail lists only pages that exist (now: Projects; UI catalog). The shell: rail on the
-inline-start edge, PageHeader on top of the content column.
+## Components
 
-```text
-Shell                                   Change page (planned, build the shell only)
-+--------+------------------------+     +-----------------------------------------------+
-| Rail   | PageHeader             |     | LineRail: intake>plan>build>checks>review>... |
-|        +------------------------+     +----------------------------+------------------+
-|        | content                |     | Evidence: spec, diff,      | Gate (sticky)    |
-+--------+------------------------+     | checks, review report      | approve / reject |
-                                        +----------------------------+------------------+
-```
+Plain names, defined as Jinja macros in `src/factory/templates/components.html` and styled with the
+tokens: Status, Page header, Pipeline, Diff view, Log view, Empty state, Error state. Add a
+component only when a page uses it.
 
-## Component catalog (closed)
+## Rules kept by `scripts/ui_lint.py`
 
-The catalog is closed. Each component is a Jinja macro in `templates/components/` with styles in
-`static/components.css`, and is rendered live (in every state, every light kind, every mode) on
-the `/ui` catalog page:
-
-| Component | Purpose |
-|---|---|
-| StateLight | Small state dot in a light kind, always with a text label |
-| ModeTag | Tag for `manual`, `shadow`, `live`; dashed outline in shadow mode |
-| LineRail | The flow as a line of steps with states |
-| Gate | Approve/reject surface with evidence, verification, and unverified lists |
-| EvidenceRow | One row of evidence linking artifact + summary |
-| RefChip | Chip link to a rule, ADR, or graph node |
-| DataTable | Dense, sortable-by-convention data table |
-| FilterBar | Row of filters above a data table |
-| DiffView | Two-column diff rendering (planned usage; built now) |
-| LogView | Scrollable mono log view |
-| Button | Solid `ink` primary and quiet secondary |
-| Field | Labeled input with help and error text |
-| EmptyState | Empty list message inviting the next action |
-| ErrorState | What failed, where, and how to recover |
-| PageHeader | Page title, description, and primary action slot |
-
-## State vocabulary (closed)
-
-Defined once in `src/factory/ui_vocab.py`; templates never hard-code state strings or badges.
-
-- **Light kinds:** `idle, run, hold, stop, shadow, done`.
-- **Task states and their light:** draft idle, planned idle, implementing run, checking run,
-  in_review run, awaiting_approval hold, merged done, deployed_dev done, awaiting_prod hold,
-  live done, blocked hold, failed stop, cancelled idle.
-- **Modes:** `manual, shadow, live`. `shadow` renders with a dashed outline in the shadow color.
-- **Registry readiness (used now):** `registered` (light: done), `invalid` (light: stop).
-
-## Copy rules
-
-- Name things by what the user does, not how the system works.
-- Buttons say what happens: "Create project", never "Submit". The same action keeps the same
-  word in toasts.
-- Errors say what went wrong and how to fix it, with no apology.
-- Empty states invite the next action.
-
-## Enforcement
-
-- `scripts/build_tokens.py` (re)generates `static/tokens.css`; `--check` fails if stale (CI).
-- `scripts/ui_lint.py` fails on literal colors, raw px sizing (outside the allowed exceptions),
-  uppercase transforms, letter-spacing, physical CSS properties, and any state label in
-  templates that does not come from `ui_vocab.py`.
-- `tests/test_tokens_contrast.py` requires WCAG contrast: 4.5:1 for `ink, steel` and the four
-  `*-text` colors against `surface` and `paper` in both themes; 3:1 for the six light colors
-  against `surface` in both themes.
-- `tests/test_ui_catalog.py` renders `/ui` and asserts every component, light kind, task state,
-  and mode appears, so adding an enum value forces a catalog update.
+No `disabled` attributes and no hash-only links (no dead controls). No placeholder phrases and no
+filler text. No banned iteration-1 terms. No literal colors outside `tokens.css`. No physical CSS
+properties.

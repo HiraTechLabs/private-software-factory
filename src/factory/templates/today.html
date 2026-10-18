@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% import "components.html" as c %}
+{% block title %}Today — Software Factory{% endblock %}
+{% block content %}
+<p class="hero">{{ headline }}</p>
+<p class="sub">Requests that are waiting for your decision come first. Everything else moves on its own.</p>
+
+{% if not (setup.models and setup.project and setup.request) %}
+<section class="panel panel-body">
+  <h2 class="section" style="margin-block-start:0">Get started</h2>
+  <ul class="activity">
+    <li><span>1</span><span>{{ c.status('done' if setup.models else 'idle', 'Choose how models answer') }} <span class="muted">on the Models page</span></span></li>
+    <li><span>2</span><span>{{ c.status('done' if setup.project else 'idle', 'Add a project') }} <span class="muted">on the Projects page</span></span></li>
+    <li><span>3</span><span>{{ c.status('done' if setup.request else 'idle', 'Send your first request') }}</span></li>
+  </ul>
+  {% if not demo_exists %}
+  <form action="/demo" method="post">
+    <button class="btn" type="submit">Create demo project</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+{% for group_id, title, empty_text in [
+  ('needs_approval', 'Needs your approval', 'Nothing is waiting for your approval.'),
+  ('waiting', 'Waiting for you', 'Nothing is waiting for you.'),
+  ('working', 'Working now', 'Nothing is working right now.'),
+  ('failed', 'Failed', 'Nothing has failed.'),
+] %}
+<h2 class="section">{{ title }}</h2>
+{% if groups[group_id] %}
+  {% for row in groups[group_id] %}
+  <div class="row{% if row.change.state in ('awaiting_approval', 'awaiting_prod', 'waiting_for_you', 'interrupted') %} need{% elif row.change.state in ('failed', 'blocked') %} fail{% endif %}">
+    <div>
+      <b>{{ row.change.title }}</b> <span class="muted">in {{ row.project_name }}</span><br>
+      {{ c.status(ui_vocab.kind_for_state(row.change.state), ui_vocab.label_for_state(row.change.state)) }}
+      {% if row.change.checks_summary %}<span class="muted"> &nbsp;{{ row.change.checks_summary }}</span>{% endif %}
+      {% if row.change.failure_reason %}<span class="muted"> &nbsp;{{ row.change.failure_reason }}</span>{% endif %}
+    </div>
+    <div class="row-actions">
+      <a class="btn {% if row.change.state not in ('awaiting_approval', 'awaiting_prod') %}quiet{% endif %}" href="/projects/{{ row.change.project }}/requests/{{ row.change.id }}">{% if row.change.state in ('awaiting_approval', 'awaiting_prod') %}Review{% elif row.change.state in ('failed', 'blocked') %}See why{% else %}Open{% endif %}</a>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="muted">{{ empty_text }}</p>
+{% endif %}
+{% endfor %}
+{% endblock %}

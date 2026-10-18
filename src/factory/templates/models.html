@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "components.html" as c %}
+{% block title %}Models — Software Factory{% endblock %}
+{% block content %}
+{{ c.page_header('Models', 'Choose where the planning, build, and review answers come from.') }}
+
+{% if test_result %}
+<div class="note" role="status">{{ test_result }}</div>
+{% endif %}
+
+<h2 class="section">The three roles</h2>
+{% for role in roles %}
+<div class="row">
+  <div>
+    <b>{{ role.label }}</b>
+    <span class="muted">{{ ui_vocab.provider_label(role.provider) }}{% if role.model %} · <span class="mono">{{ role.model }}</span>{% endif %}</span>
+  </div>
+  <div class="row-actions">
+    <form action="/models/roles/{{ role.name }}" method="post" style="display:flex; gap:8px; align-items:center">
+      <select name="provider" aria-label="Provider for {{ role.label }}">
+        <option value="manual" {% if role.provider == 'manual' %}selected{% endif %}>You paste</option>
+        <option value="ollama" {% if role.provider == 'ollama' %}selected{% endif %}>Local model</option>
+        <option value="demo" {% if role.provider == 'demo' %}selected{% endif %}>Demo model</option>
+      </select>
+      <input name="model" value="{{ role.model }}" placeholder="model name" aria-label="Model for {{ role.label }}">
+      <button class="btn quiet" type="submit">Save</button>
+    </form>
+    <form action="/models/test/{{ role.name }}" method="post">
+      <button class="btn" type="submit">Test</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+<h2 class="section">Local model server</h2>
+<section class="panel panel-body">
+  <form action="/models" method="post" class="form-row">
+    <label>Ollama URL
+      <input name="ollama_url" value="{{ settings.ollama_url }}">
+    </label>
+    <label>Read timeout (seconds)
+      <input name="model_timeout_seconds" value="{{ settings.model_timeout_seconds }}">
+      <span class="hint">Local hardware is slow. The Factory waits this long for one answer.</span>
+    </label>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

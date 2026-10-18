@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% import "components.html" as c %}
+{% block title %}Projects — Software Factory{% endblock %}
+{% block content %}
+{{ c.page_header('Projects', 'Products that the Factory manages for you.') }}
+
+{% if error_message %}
+<div class="alert" role="alert">{{ error_message }}</div>
+{% endif %}
+
+<h2 class="section">Your projects</h2>
+{% if records %}
+  {% for record in records %}
+    {% if record.manifest %}
+    <div class="row">
+      <div>
+        <b>{{ record.manifest.name }}</b>
+        <span class="mono small">{{ record.manifest.id }}</span><br>
+        <span class="muted">{{ record.manifest.description or 'No description yet.' }}</span>
+      </div>
+      <div class="row-actions">
+        <a class="btn quiet" href="/projects/{{ record.manifest.id }}">Open</a>
+      </div>
+    </div>
+    {% else %}
+      {{ c.error_state(
+        'A project could not be read',
+        'data/projects/' + record.directory + '/project.yaml',
+        record.error,
+      ) }}
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {{ c.empty_state('No projects yet', 'Create your first project below, or press Create demo project on Today.') }}
+{% endif %}
+
+<h2 class="section" id="create-project">Create a project</h2>
+<section class="panel panel-body">
+  <form action="/projects" method="post" class="form-grid">
+    <label>Project name
+      <input name="name" placeholder="e.g. Order system" required maxlength="80">
+    </label>
+    <label>Project ID (optional)
+      <input name="project_id" placeholder="built from the name if empty" maxlength="80">
+      <span class="hint">Lowercase letters, numbers, and hyphens. Fill it in if the name is not English.</span>
+    </label>
+    <label>Description
+      <textarea name="description" rows="2" maxlength="500" placeholder="What does this product do?"></textarea>
+    </label>
+    <label>Technology stack
+      <input name="stack" placeholder="e.g. Python, FastAPI, PostgreSQL">
+    </label>
+    <label>Repository
+      <select name="repo_mode">
+        <option value="new">Create a new empty repository</option>
+        <option value="existing">Use a folder on this computer</option>
+      </select>
+    </label>
+    <label>Folder (only when using a folder above)
+      <input name="repo_path" placeholder="e.g. C:\code\my-project">
+    </label>
+    <label>Checks (one per line, name: command)
+      <textarea name="checks_text" rows="3" placeholder="tests: python -m pytest&#10;lint: ruff check ."></textarea>
+    </label>
+    <div class="form-row">
+      <label>Dev deploy command (optional)
+        <input name="dev_command" placeholder="e.g. ./deploy-dev.sh">
+      </label>
+      <label>Production deploy command (optional)
+        <input name="prod_command" placeholder="e.g. ./deploy-prod.sh">
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Create project</button>
+      <span class="muted">Human approval is required to merge and to reach production.</span>
+    </div>
+  </form>
+</section>
+{% endblock %}

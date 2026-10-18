@@ -1,0 +1,46 @@
+{% macro status(kind, label) -%}
+<span class="status s-{{ kind }}"><span class="dot" aria-hidden="true"></span>{{ label }}</span>
+{%- endmacro %}
+
+{% macro page_header(title, subtitle, action_html="") -%}
+<header class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p class="muted">{{ subtitle }}</p>
+  </div>
+  {% if action_html %}<div class="row-actions">{{ action_html | safe }}</div>{% endif %}
+</header>
+{%- endmacro %}
+
+{% macro empty_state(title, text, action_html="") -%}
+<div class="empty">
+  <h3>{{ title }}</h3>
+  <p>{{ text }}</p>
+  {% if action_html %}{{ action_html | safe }}{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro error_state(title, path, detail) -%}
+<div class="error-card" role="alert">
+  <strong>{{ title }}</strong>
+  {% if path %}<p class="mono small">{{ path }}</p>{% endif %}
+  {% if detail %}<pre class="log">{{ detail }}</pre>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro pipeline(steps, pipe) -%}
+<div class="pipe" aria-label="Pipeline">
+  {% for sid, label, actor in steps %}
+  <div class="step{% if sid in pipe.done %} done{% elif sid == pipe.now %} now{% endif %}">{{ label }}<small>{{ actor }}</small></div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro log_view(text, empty="No output yet.") -%}
+{% if text %}<pre class="log">{{ text }}</pre>{% else %}<p class="muted">{{ empty }}</p>{% endif %}
+{%- endmacro %}
+
+{% macro diff_view(text) -%}
+{% if text %}<pre class="diff">{% for line in text.splitlines() %}<span class="{{ 'add' if (line.startswith('+') and not line.startswith('+++')) else ('del' if (line.startswith('-') and not line.startswith('---')) else 'ctx') }}">{{ line }}</span>
+{% endfor %}</pre>{% else %}<p class="muted">No changes yet.</p>{% endif %}
+{%- endmacro %}
